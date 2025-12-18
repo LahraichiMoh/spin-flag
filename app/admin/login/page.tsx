@@ -13,6 +13,7 @@ import Image from "next/image"
 import { Eye, EyeOff } from "lucide-react"
 
 export default function AdminLoginPage() {
+  // Force rebuild comment
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -55,17 +56,26 @@ export default function AdminLoginPage() {
     }
   }
 
-  const bgUrl = process.env.NEXT_PUBLIC_LOGIN_BG_URL || "/casa.jpg"
+  const bgUrl = process.env.NEXT_PUBLIC_LOGIN_BG_URL || "/flag-back.jpg"
   const logoUrl = process.env.NEXT_PUBLIC_LOGIN_LOGO_URL || "/casa_logo.png"
 
   return (
     <main
-      className="min-h-screen flex items-center justify-center p-4"
-      // style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
     >
-      <div className="absolute inset-0 bg-white/70" />
-      <div className="relative w-full max-w-md">
-        <Card className="border-2 border-blue-200 shadow-xl">
+      <div className="absolute inset-0 z-0">
+        <Image
+          src={bgUrl}
+          alt="Background"
+          fill
+          className="object-cover opacity-20"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 backdrop-blur-[2px]" />
+      </div>
+      
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="border-2 border-white/50 bg-white/80 shadow-2xl backdrop-blur-sm">
           <CardHeader className="text-center">
             {logoUrl && (
               <div className="flex justify-center">

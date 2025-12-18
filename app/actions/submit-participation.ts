@@ -1,13 +1,20 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
+import { getCurrentCity } from "@/app/actions/city-auth"
+import { getAvailablePrizes } from "@/app/actions/campaigns"
 
-export async function submitParticipation(name: string, code: string, agreedToTerms: boolean) {
+export async function submitParticipation(name: string, code: string, city: string, agreedToTerms: boolean, campaignId?: string) {
   try {
-    const supabase = await createClient()
+    const supabase = createServiceClient()
+
+    // Check for authenticated city and enforce it
+    const authCity = await getCurrentCity()
+    const finalCity = authCity ? authCity.name : city
 
     // Validate inputs
-    if (!name?.trim() || !code?.trim()) {
+    if (!name?.trim() || !code?.trim() || !finalCity?.trim()) {
       return { success: false, error: "Veuillez remplir tous les champs" }
     }
 
@@ -15,17 +22,43 @@ export async function submitParticipation(name: string, code: string, agreedToTe
       return { success: false, error: "Veuillez accepter les conditions générales" }
     }
 
-  const normalizedCode = code.trim().toUpperCase()
+    // Check campaign availability if campaignId is present
+    if (campaignId) {
+      let cityId = authCity?.id
+      // If no auth city, try to resolve city ID from name to check limits
+      if (!cityId && finalCity) {
+        const { data: cityRows } = await supabase.from("cities").select("id").ilike("name", finalCity).limit(1)
+        if (cityRows && cityRows.length > 0) cityId = cityRows[0].id
+      }
+
+      const availability = await getAvailablePrizes(campaignId, cityId, finalCity)
+      
+      if (availability.success && availability.data) {
+        const hasAvailable = availability.data.some((g: any) => g.available)
+        if (!hasAvailable) {
+          return { success: false, error: "The guidance period has ended for today." }
+        }
+      }
+    }
+
+    const normalizedCode = code.trim().toUpperCase()
 
   // Insert new participant
-  const { data, error: insertError } = await supabase
-    .from("participants")
-    .insert({
+    const insertData: any = {
       name: name.trim(),
-        code: normalizedCode,
-        agreed_to_terms: agreedToTerms,
-        won: false,
-      })
+      code: normalizedCode,
+      city: finalCity.trim(),
+      agreed_to_terms: agreedToTerms,
+      won: false,
+    }
+
+    if (campaignId) {
+      insertData.campaign_id = campaignId
+    }
+
+    const { data, error: insertError } = await supabase
+      .from("participants")
+      .insert(insertData)
       .select()
       .single()
 

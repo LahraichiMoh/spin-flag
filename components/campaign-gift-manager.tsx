@@ -1,0 +1,468 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Loader2, Plus, Trash2, Upload, Gift as GiftIcon, Edit, RefreshCw } from "lucide-react"
+import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { 
+  getCampaignGifts, 
+  createCampaignGift, 
+  updateCampaignGift,
+  deleteCampaignGift,
+  resetGiftWinners,
+  resetAllCampaignGifts,
+  type Gift 
+} from "@/app/actions/campaigns"
+import { GiftLimitManager } from "@/components/gift-limit-manager"
+
+interface CampaignGiftManagerProps {
+  campaignId: string
+  campaignName: string
+}
+
+export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftManagerProps) {
+  const [gifts, setGifts] = useState<Gift[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [resettingAll, setResettingAll] = useState(false)
+  
+  // Confirmation states
+  const [deleteGiftId, setDeleteGiftId] = useState<string | null>(null)
+  const [resetGiftId, setResetGiftId] = useState<string | null>(null)
+  const [confirmResetAll, setConfirmResetAll] = useState(false)
+
+  // New gift form state
+  const [newName, setNewName] = useState("")
+  const [newEmoji, setNewEmoji] = useState("🎁")
+  const [newMaxWinners, setNewMaxWinners] = useState("1")
+  const [newColor, setNewColor] = useState("#D4A017")
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+
+  // Edit gift state
+  const [editingGift, setEditingGift] = useState<Gift | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editEmoji, setEditEmoji] = useState("")
+  const [editMaxWinners, setEditMaxWinners] = useState("0")
+  const [editColor, setEditColor] = useState("")
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null)
+  const editFileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    loadGifts()
+  }, [campaignId])
+
+  const loadGifts = async () => {
+    setLoading(true)
+    const res = await getCampaignGifts(campaignId)
+    if (res.success && res.data) {
+      setGifts(res.data)
+    }
+    setLoading(false)
+  }
+
+  const handleUpload = async (file: File, isEdit = false) => {
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("bucket", "prizes")
+    
+    try {
+      const res = await fetch("/api/upload-prize", { method: "POST", body: fd })
+      const json = await res.json()
+      if (json.success) {
+        if (isEdit) {
+            setEditImageUrl(json.url)
+        } else {
+            setImageUrl(json.url)
+        }
+      } else {
+        console.error("Upload failed:", json.error)
+        toast.error("Erreur lors de l'upload de l'image")
+      }
+    } catch (e) {
+      console.error("Upload error:", e)
+      toast.error("Erreur lors de l'upload de l'image")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleCreateGift = async () => {
+    if (!newName) return
+    
+    const res = await createCampaignGift(campaignId, {
+      name: newName,
+      emoji: newEmoji,
+      max_winners: parseInt(newMaxWinners) || 0,
+      color: newColor,
+      image_url: imageUrl || undefined
+    })
+
+    if (res.success && res.data) {
+      setGifts([...gifts, res.data])
+      setShowAddForm(false)
+      // Reset form
+      setNewName("")
+      setNewEmoji("🎁")
+      setNewMaxWinners("1")
+      setNewColor("#D4A017")
+      setImageUrl(null)
+      toast.success("Cadeau créé avec succès")
+    } else {
+      toast.error("Erreur lors de la création du cadeau: " + res.error)
+    }
+  }
+
+  const openEditDialog = (gift: Gift) => {
+    setEditingGift(gift)
+    setEditName(gift.name)
+    setEditEmoji(gift.emoji)
+    setEditMaxWinners(gift.max_winners.toString())
+    setEditColor(gift.color || "#D4A017")
+    setEditImageUrl(gift.image_url || null)
+  }
+
+  const handleUpdateGift = async () => {
+    if (!editingGift || !editName) return
+
+    const res = await updateCampaignGift(editingGift.id, {
+        name: editName,
+        emoji: editEmoji,
+        max_winners: parseInt(editMaxWinners) || 0,
+        color: editColor,
+        image_url: editImageUrl || undefined
+    })
+
+    if (res.success && res.data) {
+        setGifts(gifts.map(g => g.id === editingGift.id ? res.data! : g))
+        setEditingGift(null)
+        toast.success("Cadeau mis à jour")
+    } else {
+        toast.error("Erreur lors de la mise à jour: " + res.error)
+    }
+  }
+
+  const handleResetGift = (giftId: string) => {
+    setResetGiftId(giftId)
+  }
+
+  const confirmResetGift = async () => {
+    if (!resetGiftId) return
+    
+    const res = await resetGiftWinners(resetGiftId)
+    if (res.success && res.data) {
+      setGifts(gifts.map(g => g.id === resetGiftId ? res.data! : g))
+      if (editingGift?.id === resetGiftId) {
+          setEditingGift(res.data)
+      }
+      toast.success("Compteur réinitialisé !")
+    } else {
+      toast.error("Erreur lors de la réinitialisation: " + res.error)
+    }
+    setResetGiftId(null)
+  }
+
+  const handleResetAllGifts = () => {
+    setConfirmResetAll(true)
+  }
+
+  const performResetAllGifts = async () => {
+    setResettingAll(true)
+    const res = await resetAllCampaignGifts(campaignId)
+    if (res.success && res.data) {
+      const updatedMap = new Map(res.data.map(g => [g.id, g]))
+      setGifts(prev => prev.map(g => updatedMap.get(g.id) || g))
+      toast.success("Tous les compteurs ont été réinitialisés !")
+    } else {
+      toast.error("Erreur lors de la réinitialisation: " + res.error)
+    }
+    setResettingAll(false)
+    setConfirmResetAll(false)
+  }
+
+  const handleDeleteGift = (id: string) => {
+    setDeleteGiftId(id)
+  }
+
+  const confirmDeleteGift = async () => {
+    if (!deleteGiftId) return
+    
+    const res = await deleteCampaignGift(deleteGiftId)
+    if (res.success) {
+      setGifts(gifts.filter(g => g.id !== deleteGiftId))
+      toast.success("Cadeau supprimé")
+    } else {
+      toast.error("Erreur lors de la suppression: " + res.error)
+    }
+    setDeleteGiftId(null)
+  }
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Cadeaux de la campagne: {campaignName}</h3>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? "Annuler" : <><Plus className="mr-2 h-4 w-4" /> Ajouter un cadeau</>}
+          </Button>
+          <Button variant="outline" onClick={handleResetAllGifts} disabled={resettingAll}>
+            {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Réinitialiser tous les cadeaux
+          </Button>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <Card className="bg-slate-50 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-base">Nouveau cadeau</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ex: Casquette" />
+              </div>
+              <div className="space-y-2">
+                <Label>Emoji</Label>
+                <Input value={newEmoji} onChange={e => setNewEmoji(e.target.value)} placeholder="🎁" />
+              </div>
+              <div className="space-y-2">
+                <Label>Gagnants max (Total)</Label>
+                <Input type="number" value={newMaxWinners} onChange={e => setNewMaxWinners(e.target.value)} min="0" />
+              </div>
+              <div className="space-y-2">
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input type="color" value={newColor} onChange={e => setNewColor(e.target.value)} className="w-12 p-1" />
+                  <Input value={newColor} onChange={e => setNewColor(e.target.value)} />
+                </div>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Image</Label>
+                <div className="flex gap-4 items-center">
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {imageUrl ? "Changer l'image" : "Uploader une image"}
+                  </Button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])} 
+                  />
+                  {imageUrl && <img src={imageUrl} alt="Preview" className="h-10 w-10 object-cover rounded" />}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowAddForm(false)}>Annuler</Button>
+              <Button onClick={handleCreateGift} disabled={!newName || uploading}>Créer</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Gift Dialog */}
+      <Dialog open={!!editingGift} onOpenChange={(open) => !open && setEditingGift(null)}>
+        <DialogContent className="max-w-xl">
+          <CardHeader className="px-0">
+            <CardTitle>Modifier le cadeau</CardTitle>
+          </CardHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input value={editName} onChange={e => setEditName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Emoji</Label>
+                <Input value={editEmoji} onChange={e => setEditEmoji(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Gagnants max (Total)</Label>
+                <Input 
+                  type="number" 
+                  value={editMaxWinners} 
+                  onChange={e => setEditMaxWinners(e.target.value)}
+                  min="0" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Couleur</Label>
+                <div className="flex gap-2">
+                  <Input type="color" value={editColor} onChange={e => setEditColor(e.target.value)} className="w-12 p-1" />
+                  <Input value={editColor} onChange={e => setEditColor(e.target.value)} />
+                </div>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Image</Label>
+                <div className="flex gap-4 items-center">
+                  <Button variant="outline" onClick={() => editFileInputRef.current?.click()} disabled={uploading}>
+                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {editImageUrl ? "Changer l'image" : "Uploader une image"}
+                  </Button>
+                  <input 
+                    type="file" 
+                    ref={editFileInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], true)} 
+                  />
+                  {editImageUrl && <img src={editImageUrl} alt="Preview" className="h-10 w-10 object-cover rounded" />}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center pt-4 border-t">
+               <Button 
+                variant="outline" 
+                className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                onClick={() => editingGift && handleResetGift(editingGift.id)}
+               >
+                 <RefreshCw className="mr-2 h-4 w-4" />
+                 Réinitialiser le compteur (0)
+               </Button>
+
+               <div className="flex gap-2">
+                 <Button variant="ghost" onClick={() => setEditingGift(null)}>Annuler</Button>
+                 <Button onClick={handleUpdateGift} disabled={!editName || uploading}>Enregistrer</Button>
+               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {gifts.map(gift => (
+          <Card key={gift.id} className="overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-transparent to-transparent" style={{ backgroundColor: gift.color || '#ccc' }} />
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{gift.emoji}</span>
+                  <div>
+                    <CardTitle className="text-base">{gift.name}</CardTitle>
+                    <CardDescription className="text-xs">Max: {gift.max_winners} gagnants</CardDescription>
+                  </div>
+                </div>
+                {gift.image_url && (
+                  <img src={gift.image_url} alt={gift.name} className="h-10 w-10 object-contain rounded bg-slate-100" />
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2 flex flex-col gap-2">
+              <div className="text-sm text-slate-500">
+                Gagnés: {gift.current_winners} / {gift.max_winners}
+              </div>
+              
+              <div className="flex gap-2 mt-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs">
+                      Limites par ville
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                     <GiftLimitManager 
+                       giftId={gift.id} 
+                       giftName={gift.name} 
+                       onLimitUpdated={loadGifts}
+                     />
+                  </DialogContent>
+                </Dialog>
+                
+                <Button variant="outline" size="sm" className="w-8 px-0" onClick={() => openEditDialog(gift)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                
+                <Button variant="destructive" size="sm" className="w-8 px-0" onClick={() => handleDeleteGift(gift.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        
+        {gifts.length === 0 && !showAddForm && (
+          <div className="col-span-full text-center py-12 text-slate-400 bg-slate-50 rounded-lg border border-dashed">
+            <GiftIcon className="mx-auto h-12 w-12 opacity-20 mb-2" />
+            <p>Aucun cadeau pour cette campagne.</p>
+            <Button variant="link" onClick={() => setShowAddForm(true)}>Ajouter le premier cadeau</Button>
+          </div>
+        )}
+      </div>
+
+      {/* Alert Dialogs */}
+      <AlertDialog open={!!deleteGiftId} onOpenChange={(open) => !open && setDeleteGiftId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous vraiment supprimer ce cadeau ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteGift} className="bg-red-600 hover:bg-red-700">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!resetGiftId} onOpenChange={(open) => !open && setResetGiftId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser le compteur ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous vraiment remettre à zéro le nombre de gagnants pour ce cadeau ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetGift}>
+              Réinitialiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser tous les compteurs ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous vraiment remettre à zéro tous les compteurs de gagnants de cette campagne ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={performResetAllGifts}>
+              Tout réinitialiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

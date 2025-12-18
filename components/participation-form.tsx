@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { submitParticipation } from "@/app/actions/submit-participation"
+import type { Campaign } from "@/app/actions/campaigns"
 import Image from "next/image"
 
 const GENERAL_CONDITIONS = `J'autorise la société et ses représentants, à reproduire et exploiter mon image en photo dans le cadre d'un reportage de remise de lots. Les photos seront utilisées à des fins de promotion et de communication sur les réseaux sociaux et/ou la presse nationale et pour des rapports internes de l'entreprise.
@@ -16,15 +17,26 @@ Cette autorisation emporte la possibilité d'apporter au reportage fait de mon i
 
 Cette autorisation est valable pour une utilisation sur une durée de : 1 an. Je garantis n'être lié(e) par aucun accord avec un tiers, de quelque nature que ce soit, ayant pour objet ou pour effet de limiter ou empêcher la mise en œuvre de la présente autorisation. La présente autorisation d'exploitation de mon droit à l'image est consentie à titre gratuit.`
 
-export function ParticipationForm() {
+interface ParticipationFormProps {
+  campaign?: Campaign
+  city?: string
+}
+
+export function ParticipationForm({ campaign, city: prefilledCity }: ParticipationFormProps) {
   const [name, setName] = useState("")
+  const [city, setCity] = useState(prefilledCity || "")
   const [code, setCode] = useState("")
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const isFormValid = name.trim().length > 0 && code.trim().length > 0 && agreedToTerms
+  const isFormValid = name.trim().length > 0 && city.trim().length > 0 && code.trim().length > 0 && agreedToTerms
+  
+  // Theme derived from campaign or defaults
+  const logoUrl = campaign?.theme?.logoUrl || "/casa_logo.png"
+  const primaryColor = campaign?.theme?.primaryColor || "#7f1d1d" // red-900
+  const secondaryColor = campaign?.theme?.secondaryColor || "#facc15" // yellow-400
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +44,7 @@ export function ParticipationForm() {
     setError(null)
 
     try {
-      if (!name.trim() || !code.trim()) {
+      if (!name.trim() || !city.trim() || !code.trim()) {
         setError("Veuillez remplir tous les champs")
         setIsLoading(false)
         return
@@ -44,7 +56,7 @@ export function ParticipationForm() {
         return
       }
 
-      const result = await submitParticipation(name, code, agreedToTerms)
+      const result = await submitParticipation(name, code, city, agreedToTerms, campaign?.id)
 
       if (!result.success) {
         setError(result.error || "Une erreur s'est produite")
@@ -64,17 +76,29 @@ export function ParticipationForm() {
   return (
     <div className="w-full max-w-2xl">
       <div className="flex justify-center mb-8">
-        <Image src="/casa_logo.png" alt="Casablanca Logo" width={140} height={140} className="rounded-xl shadow-md" />
+        <Image 
+          src={logoUrl} 
+          alt="Campaign Logo" 
+          width={140} 
+          height={140} 
+          className="rounded-xl shadow-md object-contain bg-white p-2" 
+        />
       </div>
 
-      <div className="bg-red-900 text-white rounded-t-3xl px-8 py-6">
+      <div 
+        className="text-white rounded-t-3xl px-8 py-6"
+        style={{ backgroundColor: primaryColor }}
+      >
         <h1 className="text-3xl font-bold text-center">Formulaire</h1>
       </div>
 
       <div className="bg-white rounded-b-3xl px-8 py-10 shadow-2xl">
         <form onSubmit={handleSubmit} className="space-y-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-8 pb-4 border-b-2 border-yellow-400">
+            <h2 
+              className="text-2xl font-bold text-gray-900 mb-8 pb-4 border-b-2"
+              style={{ borderColor: secondaryColor }}
+            >
               Informations Personnelles
             </h2>
 
@@ -90,11 +114,67 @@ export function ParticipationForm() {
                     placeholder="Entrez votre nom"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="border-2 border-gray-200 rounded-xl px-5 py-6 text-base bg-white transition-all duration-300 placeholder:text-gray-400 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-opacity-30 shadow-sm hover:border-gray-300"
+                    className="border-2 border-gray-200 rounded-xl px-5 py-6 text-base bg-white transition-all duration-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-30 shadow-sm hover:border-gray-300"
+                    style={{ 
+                      // Dynamic focus styles are hard with inline styles, using classNames for base and relying on defaults or custom CSS for focus color would be better, 
+                      // but we can try to inject style variable if needed. 
+                      // For now, let's stick to standard classes but we can't easily change focus ring color dynamically without CSS variables.
+                      // We will keep the default yellow focus classes or hardcode them to match general theme.
+                    }}
                     required
                   />
                   {name.trim() && (
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-500">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="city" className="text-gray-900 font-semibold text-base">
+                  Ville <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  {prefilledCity ? (
+                    <Input
+                      id="city"
+                      value={city}
+                      readOnly
+                      className="border-2 border-gray-200 rounded-xl px-5 py-6 text-base bg-gray-100 text-gray-600 font-medium cursor-not-allowed"
+                    />
+                  ) : (
+                    <select
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full border-2 border-gray-200 rounded-xl px-5 py-6 text-base bg-white transition-all duration-300 placeholder:text-gray-400 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-opacity-30 shadow-sm hover:border-gray-300 appearance-none"
+                      required
+                    >
+                      <option value="" disabled>
+                        Sélectionnez votre ville
+                      </option>
+                      {["Agadir", "Fes", "Rabat", "Marrakech", "Casablanca", "Tanger"].map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {!prefilledCity && (
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  )}
+                  {city.trim() && (
+                    <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-green-500">
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
@@ -157,7 +237,7 @@ export function ParticipationForm() {
                 className="w-6 h-6 mt-0.5 border-2 border-gray-300 rounded-lg transition-all group-hover:border-yellow-400"
               />
               <Label htmlFor="terms" className="text-gray-900 font-medium text-base cursor-pointer leading-relaxed">
-                <span className="text-blue-600 font-semibold">J'accepte les conditions générales</span>{" "}
+                <span className="text-blue-600 font-semibold">J&apos;accepte les conditions générales</span>{" "}
                 <span className="text-red-500">*</span>
               </Label>
             </div>

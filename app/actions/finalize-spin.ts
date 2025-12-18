@@ -1,14 +1,15 @@
 "use server"
 
 import { createServiceClient } from "@/lib/supabase/service"
+import { getAvailablePrizes } from "@/app/actions/campaigns"
 
-export async function finalizeSpin(participantId: string, selectedPrizeId: string) {
+export async function finalizeSpin(participantId: string, selectedPrizeId: string, cityId?: string) {
   try {
     const supabase = createServiceClient()
 
     const { data: participantRow, error: participantFetchError } = await supabase
       .from("participants")
-      .select("name, code")
+      .select("name, code, city, campaign_id, won")
       .eq("id", participantId)
       .single()
 
@@ -16,31 +17,40 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
       throw participantFetchError
     }
 
-    const { error: updateParticipantError } = await supabase
-      .from("participants")
-      .update({ won: true, prize_id: selectedPrizeId })
-      .eq("id", participantId)
-
-    if (updateParticipantError) {
-      throw updateParticipantError
+    if (participantRow.won === true) {
+      return { success: false, error: "Already spun" }
     }
 
-    // Create a new participant entry for this spin so each play is tracked
-    if (participantRow) {
-      const { error: insertError } = await supabase
-        .from("participants")
-        .insert({
-          name: participantRow.name,
-          code: participantRow.code,
-          won: true,
-          prize_id: selectedPrizeId,
-        })
-      if (insertError) {
-        // Non-fatal: proceed even if insert fails
-        // eslint-disable-next-line no-empty
+    // Resolve effective city id once for availability checks
+    let effectiveCityId: string | undefined = cityId
+    let effectiveCityName: string | undefined = participantRow.city
+
+    // Always resolve from participant data to ensure correct city limits
+    if (participantRow.city) {
+      const { data: cityRows } = await supabase
+        .from("cities")
+        .select("id, name")
+        .ilike("name", participantRow.city)
+        .limit(1)
+      
+      if (cityRows && cityRows.length > 0) {
+        effectiveCityId = cityRows[0].id
+        effectiveCityName = cityRows[0].name
       }
     }
 
+    // Strong guard: verify the selected prize is currently available for this campaign/city
+    if (participantRow.campaign_id) {
+      const availability = await getAvailablePrizes(participantRow.campaign_id, effectiveCityId, effectiveCityName)
+      if (availability.success && availability.data) {
+        const selected = availability.data.find((g: any) => g.id === selectedPrizeId)
+        if (!selected || selected.available === false) {
+          return { success: false, error: "The guidance period has ended for today." }
+        }
+      }
+    }
+
+    // --- CHECK LIMITS BEFORE AWARDING PRIZE ---
     const { data: prizeData, error: prizeFetchError } = await supabase
       .from("gifts")
       .select("current_winners, max_winners")
@@ -51,15 +61,70 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
       throw prizeFetchError
     }
 
-    if (prizeData && prizeData.current_winners < prizeData.max_winners) {
-      const { error: incError } = await supabase
-        .from("gifts")
-        .update({ current_winners: prizeData.current_winners + 1 })
-        .eq("id", selectedPrizeId)
+    let isEligible = true
+    let limitError = ""
 
-      if (incError) {
-        throw incError
+    // 1. Check Global Limit
+    if (prizeData.current_winners >= prizeData.max_winners) {
+      isEligible = false
+      limitError = "Global limit reached"
+    }
+
+    // 2. Check City Limit & Campaign City Limit (if global is okay)
+    if (isEligible && (effectiveCityName || effectiveCityId)) {
+
+      if (effectiveCityId) {
+        // A. Check Gift City Limit
+        const { data: limitRow } = await supabase
+            .from("gift_city_limits")
+            .select("max_winners")
+            .eq("gift_id", selectedPrizeId)
+            .eq("city_id", effectiveCityId)
+            .single()
+
+        if (limitRow && effectiveCityName) {
+           const { count, error: countError } = await supabase
+              .from("participants")
+              .select("*", { count: "exact", head: true })
+              .eq("prize_id", selectedPrizeId)
+              .ilike("city", effectiveCityName) // Use ilike for safety
+              .eq("won", true)
+           
+           if (!countError && count !== null && count >= limitRow.max_winners) {
+             isEligible = false
+             limitError = "The guidance period has ended for today."
+           }
+        }
       }
+    }
+
+    if (!isEligible) {
+      // If not eligible, we don't mark as won. We might want to return an error or pick a fallback.
+      // But since the wheel already spun, this is a race condition or configuration issue.
+      // Ideally, the spin API should return the prize.
+      // Here, we just fail the update to avoid over-awarding.
+      return { success: false, error: limitError || "The guidance period has ended for today." }
+    }
+    // ------------------------------------------
+
+    const { error: updateParticipantError } = await supabase
+      .from("participants")
+      .update({ won: true, prize_id: selectedPrizeId })
+      .eq("id", participantId)
+      .eq("won", false)
+
+    if (updateParticipantError) {
+      throw updateParticipantError
+    }
+
+    // Increment global counter
+    const { error: incError } = await supabase
+      .from("gifts")
+      .update({ current_winners: prizeData.current_winners + 1 })
+      .eq("id", selectedPrizeId)
+
+    if (incError) {
+      throw incError
     }
 
     return { success: true }
