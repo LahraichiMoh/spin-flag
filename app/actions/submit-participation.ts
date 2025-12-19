@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { getCurrentCity } from "@/app/actions/city-auth"
-import { getAvailablePrizes } from "@/app/actions/campaigns"
+// import { getAvailablePrizes } from "@/app/actions/campaigns"
 
 export async function submitParticipation(name: string, code: string, city: string, agreedToTerms: boolean, campaignId?: string) {
   try {
@@ -33,12 +33,12 @@ export async function submitParticipation(name: string, code: string, city: stri
 
       const availability = await getAvailablePrizes(campaignId, cityId, finalCity)
       
-      if (availability.success && availability.data) {
-        const hasAvailable = availability.data.some((g: any) => g.available)
-        if (!hasAvailable) {
-          return { success: false, error: "La période de participation est terminée pour aujourd'hui." }
-        }
-      }
+      // if (availability.success && availability.data) {
+      //   const hasAvailable = availability.data.some((g: any) => g.available)
+      //   if (!hasAvailable) {
+      //     return { success: false, error: "La période de participation est terminée pour aujourd'hui." }
+      //   }
+      // }
     }
 
     const normalizedCode = code.trim().toUpperCase()

@@ -310,16 +310,7 @@ export function SpinnerWheel({
               }`}
               style={customColors?.secondary ? { borderColor: customColors.secondary } : undefined}
             >
-              {campaignTheme?.backgroundUrl && (
-                  <div className="absolute inset-0 z-0">
-                      <img 
-                          src={campaignTheme.backgroundUrl} 
-                          alt="" 
-                          className="w-full h-full object-cover opacity-20"
-                      />
-                      <div className="absolute inset-0 bg-white/40" />
-                  </div>
-              )}
+
               <div className="relative z-10">
                   <p 
                     className={`text-2xl md:text-3xl font-extrabold ${theme === "gold" ? "text-amber-700" : "text-blue-900"}`}

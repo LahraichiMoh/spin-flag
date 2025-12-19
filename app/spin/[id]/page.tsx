@@ -165,7 +165,7 @@ export default function SpinPage() {
       if (!result.success) {
         // If limit reached, show friendly message
         if (result.error && (result.error.includes("limit reached") || result.error.includes("Stock épuisé") || result.error.includes("La période de participation") || result.error.includes("The guidance period"))) {
-             if (result.error === "La période de participation est terminée pour aujourd'hui." || result.error === "The guidance period has ended for today.") {
+             if (result.error === "La période de participation est terminée pour aujourd'hui." || result.error === "La période de participation est terminée pour aujourd'hui.") {
                  setSpinError("La période de participation est terminée pour aujourd'hui.")
              } else {
                  setSpinError("Dommage ! Ce cadeau est épuisé pour votre ville. Veuillez réessayer.")
