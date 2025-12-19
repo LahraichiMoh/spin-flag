@@ -7,6 +7,7 @@ import { SpinnerWheel } from "@/components/spinner-wheel"
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { finalizeSpin } from "@/app/actions/finalize-spin"
+import { Loader2 } from "lucide-react"
 
 import { type Campaign, getAvailablePrizes } from "@/app/actions/campaigns"
 
@@ -209,23 +210,11 @@ export default function SpinPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-        
-        <div className="relative w-screen h-screen">
-          {(() => {
-            const url = campaign?.theme?.loaderUrl || "/loader.jpg"
-            return (
-              <Image
-                src={url}
-                alt="Loading Logo"
-                fill
-                priority
-                className="object-cover animate-zoom-in-out"
-              />
-            )
-          })()}
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 text-blue-700 animate-spin" />
+          <p className="text-blue-900 font-medium">Chargement...</p>
         </div>
-        
       </main>
     )
   }
