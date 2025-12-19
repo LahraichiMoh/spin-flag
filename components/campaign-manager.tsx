@@ -37,14 +37,17 @@ export function CampaignManager() {
     primaryColor: "#7f1d1d",
     secondaryColor: "#facc15",
     logoUrl: "",
-    backgroundUrl: ""
+    backgroundUrl: "",
+    loaderUrl: ""
   })
   
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBg, setUploadingBg] = useState(false)
+  const [uploadingLoader, setUploadingLoader] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bgInputRef = useRef<HTMLInputElement>(null)
+  const loaderInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadCampaigns()
@@ -59,9 +62,12 @@ export function CampaignManager() {
     setLoading(false)
   }
 
-  const handleUpload = async (file: File, type: 'logo' | 'bg') => {
+  const handleUpload = async (file: File, type: 'logo' | 'bg' | 'loader') => {
     const isLogo = type === 'logo'
+    const isLoader = type === 'loader'
+    
     if (isLogo) setUploadingLogo(true)
+    else if (isLoader) setUploadingLoader(true)
     else setUploadingBg(true)
 
     const fd = new FormData()
@@ -74,7 +80,7 @@ export function CampaignManager() {
       if (json.success) {
         setFormData(prev => ({
           ...prev,
-          [isLogo ? 'logoUrl' : 'backgroundUrl']: json.url
+          [isLogo ? 'logoUrl' : isLoader ? 'loaderUrl' : 'backgroundUrl']: json.url
         }))
         toast.success("Image téléchargée avec succès")
       } else {
@@ -84,6 +90,7 @@ export function CampaignManager() {
       toast.error("Erreur lors de l'upload")
     } finally {
       if (isLogo) setUploadingLogo(false)
+      else if (isLoader) setUploadingLoader(false)
       else setUploadingBg(false)
     }
   }
@@ -97,7 +104,8 @@ export function CampaignManager() {
       primaryColor: campaign.theme.primaryColor || "#7f1d1d",
       secondaryColor: campaign.theme.secondaryColor || "#facc15",
       logoUrl: campaign.theme.logoUrl || "",
-      backgroundUrl: campaign.theme.backgroundUrl || ""
+      backgroundUrl: campaign.theme.backgroundUrl || "",
+      loaderUrl: campaign.theme.loaderUrl || ""
     })
   }
 
@@ -123,7 +131,8 @@ export function CampaignManager() {
       primaryColor: formData.primaryColor,
       secondaryColor: formData.secondaryColor,
       logoUrl: formData.logoUrl,
-      backgroundUrl: formData.backgroundUrl
+      backgroundUrl: formData.backgroundUrl,
+      loaderUrl: formData.loaderUrl
     }
 
     if (editingCampaign) {
@@ -155,7 +164,8 @@ export function CampaignManager() {
             primaryColor: "#7f1d1d",
             secondaryColor: "#facc15",
             logoUrl: "",
-            backgroundUrl: ""
+            backgroundUrl: "",
+            loaderUrl: ""
         })
       }
     }
@@ -268,6 +278,33 @@ export function CampaignManager() {
                             </div>
                             {formData.backgroundUrl && (
                                 <img src={formData.backgroundUrl} alt="BG preview" className="h-16 w-full object-cover border rounded mt-2" />
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label>URL de l&apos;image de chargement</Label>
+                            <div className="flex gap-2">
+                                <Input value={formData.loaderUrl} onChange={e => setFormData({...formData, loaderUrl: e.target.value})} placeholder="/loader.jpg" />
+                                <input 
+                                  type="file" 
+                                  ref={loaderInputRef} 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files?.[0]) handleUpload(e.target.files[0], 'loader')
+                                  }}
+                                />
+                                <Button 
+                                  type="button"
+                                  variant="outline" 
+                                  size="icon"
+                                  onClick={() => loaderInputRef.current?.click()}
+                                  disabled={uploadingLoader}
+                                >
+                                  {uploadingLoader ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            {formData.loaderUrl && (
+                                <img src={formData.loaderUrl} alt="Loader preview" className="h-16 object-contain border rounded bg-gray-50 mt-2" />
                             )}
                         </div>
                     </div>

@@ -189,7 +189,7 @@ export function SpinnerWheel({
                   d="M16 40L0 0H32L16 40Z"
                   fill="black"
                   stroke="white"
-                  strokeWidth="2"
+                  strokeWidth="4"
                 />
               </svg>
             </div>
@@ -215,7 +215,7 @@ export function SpinnerWheel({
                     backgroundImage: `${gradient}, ${separators}, ${radialShade}`,
                     width: wheelSize,
                     height: wheelSize,
-                    borderWidth: 1,
+                    borderWidth: 5,
                   }}
                 >
                   {prizes.map((prize, index) => {
@@ -269,15 +269,8 @@ export function SpinnerWheel({
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative pointer-events-auto">
                 <div
-                  className="w-14 h-14 rounded-full bg-white shadow flex items-center justify-center"
-                >
-                   <div className="w-3 h-3 rounded-full bg-neutral-300" />
-                </div>
-                {pointerSide === "top" ? (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-t-6 border-l-transparent border-r-transparent border-t-white" />
-                ) : (
-                  <div className="absolute top-1/2 -translate-y-1/2 -right-3 w-0 h-0 border-l-8 border-y-5 border-y-transparent border-l-white" />
-                )}
+                  className="w-4 h-4 rounded-full bg-white shadow-sm"
+                />
               </div>
             </div>
           )}
@@ -289,7 +282,7 @@ export function SpinnerWheel({
         <Button
           onClick={handleSpin}
           disabled={isSpinning || hasSpun || !hasAvailablePrizes}
-          className={`px-12 py-8 text-2xl font-bold rounded-full shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
+          className={`px-18 py-10 border-4 border-white text-2xl font-bold rounded-full shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
             isSpinning ? "opacity-50 cursor-not-allowed" : ""
           } ${!customColors?.primary ? buttonClasses : ""}`}
           style={

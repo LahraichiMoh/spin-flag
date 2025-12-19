@@ -9,6 +9,7 @@ export type CampaignTheme = {
   secondaryColor?: string
   logoUrl?: string
   backgroundUrl?: string
+  loaderUrl?: string
   fontFamily?: string
 }
 

@@ -213,7 +213,7 @@ export default function SpinPage() {
         
         <div className="relative w-screen h-screen">
           {(() => {
-            const url = "/loader.jpg"
+            const url = campaign?.theme?.loaderUrl || "/loader.jpg"
             return (
               <Image
                 src={url}
@@ -290,6 +290,7 @@ export default function SpinPage() {
           <section className="w-full grid grid-cols-1 md:grid-cols-2 items-center px-6 md:px-12 gap-8">
             <div className="flex justify-center md:justify-start md:pl-10 lg:pl-20">
               <SpinnerWheel
+                className="-mt-20 md:mt-0"
                 participantName={participant.name}
                 prizes={wheelPrizes}
                 onSpinComplete={handleSpinComplete}
@@ -299,7 +300,6 @@ export default function SpinPage() {
                 pointerSide="top"
                 spinLabel="Tournez pour la Gloire!"
                 theme="default"
-                className="md:translate-y-6"
                 customColors={{
                   primary: campaign?.theme?.primaryColor,
                   secondary: campaign?.theme?.secondaryColor
