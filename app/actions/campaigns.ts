@@ -37,53 +37,71 @@ export interface Gift {
 }
 
 export async function getCampaigns() {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .order("created_at", { ascending: false })
   
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching campaigns:", error)
-    return { success: false, error: error.message }
+    if (error) {
+      console.error("Error fetching campaigns:", error)
+      return { success: false, error: error.message }
+    }
+  
+    return { success: true, data: data as Campaign[] }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    console.error("Error initializing Supabase client for getCampaigns:", message)
+    return { success: false, error: message }
   }
-
-  return { success: true, data: data as Campaign[] }
 }
 
 export async function getCampaignBySlug(slug: string) {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("*")
-    .eq("slug", slug)
-    .single()
-
-  if (error) {
-    console.error(`Error fetching campaign with slug ${slug}:`, error)
-    return { success: false, error: error.message }
+  try {
+    const supabase = await createClient()
+  
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("slug", slug)
+      .single()
+  
+    if (error) {
+      console.error(`Error fetching campaign with slug ${slug}:`, error)
+      return { success: false, error: error.message }
+    }
+  
+    return { success: true, data: data as Campaign }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    console.error("Error initializing Supabase client for getCampaignBySlug:", message)
+    return { success: false, error: message }
   }
-
-  return { success: true, data: data as Campaign }
 }
 
 export async function getCampaignById(id: string) {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("*")
-    .eq("id", id)
-    .single()
-
-  if (error) {
-    console.error(`Error fetching campaign with id ${id}:`, error)
-    return { success: false, error: error.message }
+  try {
+    const supabase = await createClient()
+  
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("id", id)
+      .single()
+  
+    if (error) {
+      console.error(`Error fetching campaign with id ${id}:`, error)
+      return { success: false, error: error.message }
+    }
+  
+    return { success: true, data: data as Campaign }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    console.error("Error initializing Supabase client for getCampaignById:", message)
+    return { success: false, error: message }
   }
-
-  return { success: true, data: data as Campaign }
 }
 
 export async function createCampaign(data: {
