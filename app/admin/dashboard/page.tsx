@@ -3,7 +3,13 @@ import { createClient } from "@/lib/supabase/server"
 import { AdminDashboard } from "@/components/admin-dashboard"
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
+  let supabase;
+  try {
+    supabase = await createClient()
+  } catch (error) {
+    console.error("Supabase initialization failed:", error)
+    redirect("/admin/login")
+  }
 
   const { data, error } = await supabase.auth.getUser()
   if (error || !data?.user) {
