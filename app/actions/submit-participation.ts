@@ -31,7 +31,7 @@ export async function submitParticipation(name: string, code: string, city: stri
         if (cityRows && cityRows.length > 0) cityId = cityRows[0].id
       }
 
-      const availability = await getAvailablePrizes(campaignId, cityId, finalCity)
+      // const availability = await getAvailablePrizes(campaignId, cityId, finalCity)
       
       // if (availability.success && availability.data) {
       //   const hasAvailable = availability.data.some((g: any) => g.available)
