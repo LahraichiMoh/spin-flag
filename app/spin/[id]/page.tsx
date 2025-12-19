@@ -164,9 +164,9 @@ export default function SpinPage() {
       const result = await finalizeSpin(participantId, selectedPrizeId, cityId)
       if (!result.success) {
         // If limit reached, show friendly message
-        if (result.error && (result.error.includes("limit reached") || result.error.includes("Stock épuisé") || result.error.includes("The guidance period"))) {
-             if (result.error === "The guidance period has ended for today.") {
-                 setSpinError(result.error)
+        if (result.error && (result.error.includes("limit reached") || result.error.includes("Stock épuisé") || result.error.includes("La période de participation") || result.error.includes("The guidance period"))) {
+             if (result.error === "La période de participation est terminée pour aujourd'hui." || result.error === "The guidance period has ended for today.") {
+                 setSpinError("La période de participation est terminée pour aujourd'hui.")
              } else {
                  setSpinError("Dommage ! Ce cadeau est épuisé pour votre ville. Veuillez réessayer.")
              }

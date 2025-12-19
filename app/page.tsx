@@ -27,7 +27,7 @@ export default async function HomePage() {
           </div> */}
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl md:text-6xl mb-4">
             <span className="block text-[#002366]">Nos Campagnes</span>
-            <span className="block text-[#C5A572]">Active</span>
+            <span className="block text-[#C5A572]">En Cours</span>
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
             Choisissez une campagne ci-dessous pour participer et tenter de gagner des cadeaux exceptionnels !

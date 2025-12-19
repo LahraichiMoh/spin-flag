@@ -45,7 +45,7 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
       if (availability.success && availability.data) {
         const selected = availability.data.find((g: any) => g.id === selectedPrizeId)
         if (!selected || selected.available === false) {
-          return { success: false, error: "The guidance period has ended for today." }
+          return { success: false, error: "La période de participation est terminée pour aujourd'hui." }
         }
       }
     }
@@ -92,7 +92,7 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
            
            if (!countError && count !== null && count >= limitRow.max_winners) {
              isEligible = false
-             limitError = "The guidance period has ended for today."
+             limitError = "La période de participation est terminée pour aujourd'hui."
            }
         }
       }

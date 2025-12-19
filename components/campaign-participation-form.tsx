@@ -64,7 +64,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
         return
     }
     if (cityExhausted) {
-        setError("The guidance period has ended for today.")
+        setError("La période de participation est terminée pour aujourd'hui.")
         return
     }
     

@@ -36,7 +36,7 @@ export async function submitParticipation(name: string, code: string, city: stri
       if (availability.success && availability.data) {
         const hasAvailable = availability.data.some((g: any) => g.available)
         if (!hasAvailable) {
-          return { success: false, error: "The guidance period has ended for today." }
+          return { success: false, error: "La période de participation est terminée pour aujourd'hui." }
         }
       }
     }
