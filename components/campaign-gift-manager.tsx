@@ -380,7 +380,12 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                   <Edit className="h-4 w-4" />
                 </Button>
                 
-                <Button variant="destructive" size="sm" className="w-8 px-0" onClick={() => handleDeleteGift(gift.id)}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleDeleteGift(gift.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -399,7 +404,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
 
       {/* Alert Dialogs */}
       <AlertDialog open={!!deleteGiftId} onOpenChange={(open) => !open && setDeleteGiftId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900">
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -416,7 +421,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       </AlertDialog>
 
       <AlertDialog open={!!resetGiftId} onOpenChange={(open) => !open && setResetGiftId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900">
           <AlertDialogHeader>
             <AlertDialogTitle>Réinitialiser le compteur ?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -433,7 +438,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       </AlertDialog>
 
       <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900">
           <AlertDialogHeader>
             <AlertDialogTitle>Réinitialiser tous les compteurs ?</AlertDialogTitle>
             <AlertDialogDescription>

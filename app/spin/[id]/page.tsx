@@ -5,11 +5,12 @@ import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { SpinnerWheel } from "@/components/spinner-wheel"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { finalizeSpin } from "@/app/actions/finalize-spin"
 import { Loader2 } from "lucide-react"
 
-import { type Campaign, getAvailablePrizes } from "@/app/actions/campaigns"
+import { getAvailablePrizes, type Campaign } from "@/app/actions/campaigns"
 
 interface Participant {
   id: string
@@ -305,9 +306,8 @@ export default function SpinPage() {
                 }}
               />
             </div>
-          <div className="hidden md:flex justify-center items-center">
-            {/* Placeholder for future backend content */}
-          </div>
+            <div className="hidden md:flex justify-center items-center w-full">
+            </div>
         </section>
       </div>
     </main>
