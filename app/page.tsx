@@ -41,7 +41,7 @@ export default async function HomePage() {
                <Card key={campaign.id} className="flex flex-col overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border-0 ring-1 ring-gray-200 bg-white h-full">
                   {/* Campaign Visual */}
                   <div className="relative h-56 w-full bg-gray-100 group overflow-hidden">
-                     {campaign.theme.backgroundUrl ? (
+                     {campaign.theme?.backgroundUrl ? (
                         <Image 
                           src={campaign.theme.backgroundUrl} 
                           alt={campaign.name} 
@@ -51,7 +51,7 @@ export default async function HomePage() {
                      ) : (
                         <div 
                           className="flex items-center justify-center h-full w-full text-white font-bold text-4xl"
-                          style={{ backgroundColor: campaign.theme.primaryColor || '#002366' }}
+                          style={{ backgroundColor: campaign.theme?.primaryColor || '#002366' }}
                         >
                            {campaign.name.charAt(0)}
                         </div>
@@ -61,7 +61,7 @@ export default async function HomePage() {
                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
 
                      {/* Logo Badge */}
-                     {campaign.theme.logoUrl && (
+                     {campaign.theme?.logoUrl && (
                         <div className="absolute -bottom-8 left-6 z-10">
                            <div className="relative h-20 w-20 rounded-full border-4 border-white bg-white overflow-hidden shadow-lg p-1">
                               <Image 
@@ -90,7 +90,7 @@ export default async function HomePage() {
                         <Button 
                           className="w-full text-lg font-bold py-6 shadow-md hover:shadow-lg transition-all" 
                           style={{ 
-                            backgroundColor: campaign.theme.primaryColor || '#002366', 
+                            backgroundColor: campaign.theme?.primaryColor || '#002366', 
                             color: 'white' 
                           }}
                         >
