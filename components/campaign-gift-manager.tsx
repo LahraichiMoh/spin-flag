@@ -47,7 +47,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
 
   // New gift form state
   const [newName, setNewName] = useState("")
-  const [newMaxWinners, setNewMaxWinners] = useState("1")
+  const [newMaxWinners, setNewMaxWinners] = useState("0")
   const [newColor, setNewColor] = useState("#D4A017")
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -116,7 +116,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       setShowAddForm(false)
       // Reset form
       setNewName("")
-      setNewMaxWinners("1")
+      setNewMaxWinners("0")
       setNewColor("#D4A017")
       setImageUrl(null)
       toast.success("Cadeau créé avec succès")
