@@ -103,7 +103,7 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
       // But since the wheel already spun, this is a race condition or configuration issue.
       // Ideally, the spin API should return the prize.
       // Here, we just fail the update to avoid over-awarding.
-      return { success: false, error: limitError || "The guidance period has ended for today." }
+      return { success: false, error: limitError || "La période de participation est terminée pour aujourd'hui." }
     }
     // ------------------------------------------
 
