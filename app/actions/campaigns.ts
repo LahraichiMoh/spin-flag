@@ -336,7 +336,7 @@ export async function getAvailablePrizes(campaignId: string, cityId?: string, ci
     .from("gifts")
     .select("*")
     .eq("campaign_id", campaignId)
-    .order("name")
+    .order("created_at", { ascending: true })
 
   if (giftsError || !gifts) {
     return { success: false, error: "No gifts found" }

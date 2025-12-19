@@ -41,6 +41,7 @@ export default function SpinPage() {
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [loading, setLoading] = useState(true)
   const [hasSpun, setHasSpun] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [resultPrize, setResultPrize] = useState<{ id: string; name: string; imageUrl?: string; color?: string } | null>(null)
   const [spinError, setSpinError] = useState<string | null>(null)
   const [cityId, setCityId] = useState<string | undefined>(undefined)
@@ -49,6 +50,18 @@ export default function SpinPage() {
     const loadData = async () => {
       try {
         const supabase = createClient()
+
+        let admin = false
+        const { data: auth, error: authError } = await supabase.auth.getUser()
+        if (!authError && auth.user) {
+          const { data: adminRow } = await supabase
+            .from("admins")
+            .select("id")
+            .eq("id", auth.user.id)
+            .maybeSingle()
+          admin = !!adminRow
+        }
+        setIsAdmin(admin)
 
         // Get participant data
         const { data: participantData, error: participantError } = await supabase
@@ -59,7 +72,7 @@ export default function SpinPage() {
 
         if (participantError) throw participantError
         setParticipant(participantData)
-        setHasSpun(!!participantData.won)
+        setHasSpun(!!participantData.won && !admin)
 
         // Get campaign if exists
         let currentCampaignId = participantData.campaign_id
@@ -161,7 +174,7 @@ export default function SpinPage() {
       setSpinError(null)
       const selectedPrize = prizes.find((p) => p.id === selectedPrizeId)
 
-      const result = await finalizeSpin(participantId, selectedPrizeId, cityId)
+      const result = await finalizeSpin(participantId, selectedPrizeId, cityId, isAdmin)
       if (!result.success) {
         // If limit reached, show friendly message
         if (result.error && (result.error.includes("limit reached") || result.error.includes("Stock épuisé") || result.error.includes("La période de participation") || result.error.includes("The guidance period"))) {

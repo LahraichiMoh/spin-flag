@@ -1,24 +1,21 @@
 "use server"
 
+import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { getAvailablePrizes } from "@/app/actions/campaigns"
 
-export async function finalizeSpin(participantId: string, selectedPrizeId: string, cityId?: string) {
+export async function finalizeSpin(participantId: string, selectedPrizeId: string, cityId?: string, allowRespin?: boolean) {
   try {
     const supabase = createServiceClient()
 
     const { data: participantRow, error: participantFetchError } = await supabase
       .from("participants")
-      .select("name, code, city, campaign_id, won")
+      .select("name, code, city, campaign_id, won, prize_id")
       .eq("id", participantId)
       .single()
 
     if (participantFetchError) {
       throw participantFetchError
-    }
-
-    if (participantRow.won === true) {
-      return { success: false, error: "Already spun" }
     }
 
     // Resolve effective city id once for availability checks
@@ -37,6 +34,43 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
         effectiveCityId = cityRows[0].id
         effectiveCityName = cityRows[0].name
       }
+    }
+
+    if (participantRow.won === true) {
+      if (!allowRespin) {
+        return { success: false, error: "Already spun" }
+      }
+
+      const authSupabase = await createClient()
+      const { data: auth, error: authError } = await authSupabase.auth.getUser()
+      if (authError || !auth.user) {
+        return { success: false, error: "Unauthorized" }
+      }
+
+      const { data: adminRow } = await authSupabase
+        .from("admins")
+        .select("id")
+        .eq("id", auth.user.id)
+        .maybeSingle()
+
+      if (!adminRow) {
+        return { success: false, error: "Unauthorized" }
+      }
+
+      if (participantRow.prize_id) {
+        const { data: oldPrizeRow, error: oldPrizeError } = await supabase
+          .from("gifts")
+          .select("current_winners")
+          .eq("id", participantRow.prize_id)
+          .single()
+
+        if (!oldPrizeError && oldPrizeRow) {
+          const next = Math.max((oldPrizeRow.current_winners || 0) - 1, 0)
+          await supabase.from("gifts").update({ current_winners: next }).eq("id", participantRow.prize_id)
+        }
+      }
+
+      await supabase.from("participants").update({ won: false, prize_id: null }).eq("id", participantId)
     }
 
     // Strong guard: verify the selected prize is currently available for this campaign/city
