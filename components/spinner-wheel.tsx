@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 interface Prize {
   id: string
   name: string
-  emoji: string
   imageUrl?: string
   color?: string
   available?: boolean

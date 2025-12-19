@@ -97,7 +97,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
           <p className="mt-2 text-sm text-gray-600">Vérification des récompenses disponibles…</p>
         ) : cityExhausted ? (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 font-bold">La période de participation est terminée pour aujourd'hui.</p>
+            <p className="text-red-600 font-bold">La période de participation est terminée pour aujourd&apos;hui.</p>
           </div>
         ) : (
           <p className="mt-2 text-sm text-green-700">Des récompenses sont disponibles.</p>

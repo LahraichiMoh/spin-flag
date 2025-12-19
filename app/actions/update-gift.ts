@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service"
 
 export async function updateGift(
   id: string,
-  payload: { name?: string; image_url?: string; emoji?: string; max_winners?: number; color?: string },
+  payload: { name?: string; image_url?: string; max_winners?: number; color?: string },
 ) {
   try {
     const supabase = createServiceClient()
@@ -18,4 +18,3 @@ export async function updateGift(
     return { success: false, error: msg }
   }
 }
-

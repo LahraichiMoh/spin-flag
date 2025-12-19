@@ -10,7 +10,6 @@ import { Users, Trophy, CalendarDays } from "lucide-react"
 interface Gift {
   id: string
   name: string
-  emoji: string
   image_url?: string
 }
 
@@ -48,7 +47,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
         const supabase = createClient()
 
         // Get gifts (needed for prize names)
-        let giftsQuery = supabase.from("gifts").select("id, name, emoji, image_url")
+        let giftsQuery = supabase.from("gifts").select("id, name, image_url")
         if (campaignId) {
             giftsQuery = giftsQuery.eq("campaign_id", campaignId)
         }
@@ -251,52 +250,54 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
 
             {/* Desktop View */}
             <div className="overflow-x-auto rounded-lg border border-gray-200 hidden sm:block">
-                <div className="grid grid-cols-6 gap-4 py-3 border-b text-sm font-medium text-muted-foreground">
-                  <div className="col-span-2">Nom</div>
-                  <div>Code</div>
-                  <div>Ville</div>
-                  <div>Résultat</div>
-                  <div className="text-right">Date</div>
-                </div>
-                <div className="space-y-4 mt-2">
-                  {filteredParticipants.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">Aucun participant trouvé</div>
-                  ) : (
-                    filteredParticipants.map((participant) => {
-                      const prize = participant.prize_id ? prizeMap[participant.prize_id] : null
-                      return (
-                        <div key={participant.id} className="grid grid-cols-6 gap-4 items-center text-sm">
-                          <div className="col-span-2 font-medium">{participant.name}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{participant.code}</div>
-                          <div className="text-muted-foreground">{participant.city || "-"}</div>
-                          <div>
-                            {participant.won && prize ? (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                                <Trophy className="h-3 w-3" />
-                                {prize.emoji} {prize.name}
-                              </span>
-                            ) : participant.won ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
-                                Gagné (Inconnu)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
-                                Perdu
-                              </span>
-                            )}
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-6 gap-4 py-3 border-b text-sm font-medium text-muted-foreground">
+                    <div className="col-span-2">Nom</div>
+                    <div>Code</div>
+                    <div>Ville</div>
+                    <div>Résultat</div>
+                    <div className="text-right">Date</div>
+                  </div>
+                  <div className="space-y-4 mt-2">
+                    {filteredParticipants.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">Aucun participant trouvé</div>
+                    ) : (
+                      filteredParticipants.map((participant) => {
+                        const prize = participant.prize_id ? prizeMap[participant.prize_id] : null
+                        return (
+                          <div key={participant.id} className="grid grid-cols-6 gap-4 items-center text-sm">
+                            <div className="col-span-2 font-medium">{participant.name}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{participant.code}</div>
+                            <div className="text-muted-foreground">{participant.city || "-"}</div>
+                            <div>
+                              {participant.won && prize ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                                  <Trophy className="h-3 w-3" />
+                                  {prize.name}
+                                </span>
+                              ) : participant.won ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
+                                  Gagné (Inconnu)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                                  Perdu
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-right text-muted-foreground text-xs">
+                              {new Date(participant.created_at).toLocaleDateString("fr-FR", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
                           </div>
-                          <div className="text-right text-muted-foreground text-xs">
-                            {new Date(participant.created_at).toLocaleDateString("fr-FR", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
             </div>
             </CardContent>

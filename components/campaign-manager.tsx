@@ -38,16 +38,13 @@ export function CampaignManager() {
     secondaryColor: "#facc15",
     logoUrl: "",
     backgroundUrl: "",
-    loaderUrl: ""
   })
   
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBg, setUploadingBg] = useState(false)
-  const [uploadingLoader, setUploadingLoader] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bgInputRef = useRef<HTMLInputElement>(null)
-  const loaderInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadCampaigns()
@@ -62,12 +59,10 @@ export function CampaignManager() {
     setLoading(false)
   }
 
-  const handleUpload = async (file: File, type: 'logo' | 'bg' | 'loader') => {
+  const handleUpload = async (file: File, type: 'logo' | 'bg') => {
     const isLogo = type === 'logo'
-    const isLoader = type === 'loader'
     
     if (isLogo) setUploadingLogo(true)
-    else if (isLoader) setUploadingLoader(true)
     else setUploadingBg(true)
 
     const fd = new FormData()
@@ -80,7 +75,7 @@ export function CampaignManager() {
       if (json.success) {
         setFormData(prev => ({
           ...prev,
-          [isLogo ? 'logoUrl' : isLoader ? 'loaderUrl' : 'backgroundUrl']: json.url
+          [isLogo ? 'logoUrl' : 'backgroundUrl']: json.url
         }))
         toast.success("Image téléchargée avec succès")
       } else {
@@ -90,7 +85,6 @@ export function CampaignManager() {
       toast.error("Erreur lors de l'upload")
     } finally {
       if (isLogo) setUploadingLogo(false)
-      else if (isLoader) setUploadingLoader(false)
       else setUploadingBg(false)
     }
   }
@@ -105,7 +99,6 @@ export function CampaignManager() {
       secondaryColor: campaign.theme.secondaryColor || "#facc15",
       logoUrl: campaign.theme.logoUrl || "",
       backgroundUrl: campaign.theme.backgroundUrl || "",
-      loaderUrl: campaign.theme.loaderUrl || ""
     })
   }
 
@@ -132,7 +125,6 @@ export function CampaignManager() {
       secondaryColor: formData.secondaryColor,
       logoUrl: formData.logoUrl,
       backgroundUrl: formData.backgroundUrl,
-      loaderUrl: formData.loaderUrl
     }
 
     if (editingCampaign) {
@@ -165,7 +157,6 @@ export function CampaignManager() {
             secondaryColor: "#facc15",
             logoUrl: "",
             backgroundUrl: "",
-            loaderUrl: ""
         })
       }
     }
@@ -182,10 +173,25 @@ export function CampaignManager() {
         </div>
 
         <Tabs defaultValue="settings">
-          <TabsList>
-            <TabsTrigger value="settings"><Settings className="mr-2 h-4 w-4" /> Paramètres</TabsTrigger>
-            <TabsTrigger value="gifts"><GiftIcon className="mr-2 h-4 w-4" /> Cadeaux</TabsTrigger>
-            <TabsTrigger value="participants"><Users className="mr-2 h-4 w-4" /> Participants</TabsTrigger>
+          <TabsList className="inline-flex h-12 items-center gap-1 rounded-xl bg-slate-100 p-1 shadow-sm ring-1 ring-slate-200">
+            <TabsTrigger
+              value="settings"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+            >
+              <Settings className="mr-2 h-4 w-4" /> Paramètres
+            </TabsTrigger>
+            <TabsTrigger
+              value="gifts"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+            >
+              <GiftIcon className="mr-2 h-4 w-4" /> Cadeaux
+            </TabsTrigger>
+            <TabsTrigger
+              value="participants"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+            >
+              <Users className="mr-2 h-4 w-4" /> Participants
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="settings">
@@ -278,33 +284,6 @@ export function CampaignManager() {
                             </div>
                             {formData.backgroundUrl && (
                                 <img src={formData.backgroundUrl} alt="BG preview" className="h-16 w-full object-cover border rounded mt-2" />
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label>URL de l&apos;image de chargement</Label>
-                            <div className="flex gap-2">
-                                <Input value={formData.loaderUrl} onChange={e => setFormData({...formData, loaderUrl: e.target.value})} placeholder="/loader.jpg" />
-                                <input 
-                                  type="file" 
-                                  ref={loaderInputRef} 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files?.[0]) handleUpload(e.target.files[0], 'loader')
-                                  }}
-                                />
-                                <Button 
-                                  type="button"
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => loaderInputRef.current?.click()}
-                                  disabled={uploadingLoader}
-                                >
-                                  {uploadingLoader ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                            {formData.loaderUrl && (
-                                <img src={formData.loaderUrl} alt="Loader preview" className="h-16 object-contain border rounded bg-gray-50 mt-2" />
                             )}
                         </div>
                     </div>

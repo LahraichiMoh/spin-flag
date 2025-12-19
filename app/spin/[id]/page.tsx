@@ -24,7 +24,6 @@ interface Participant {
 interface Prize {
   id: string
   name: string
-  emoji: string
   image_url?: string
   max_winners: number
   current_winners: number
@@ -42,7 +41,7 @@ export default function SpinPage() {
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [loading, setLoading] = useState(true)
   const [hasSpun, setHasSpun] = useState(false)
-  const [resultPrize, setResultPrize] = useState<{ id: string; name: string; emoji: string; imageUrl?: string; color?: string } | null>(null)
+  const [resultPrize, setResultPrize] = useState<{ id: string; name: string; imageUrl?: string; color?: string } | null>(null)
   const [spinError, setSpinError] = useState<string | null>(null)
   const [cityId, setCityId] = useState<string | undefined>(undefined)
 
@@ -191,12 +190,8 @@ export default function SpinPage() {
         ? {
             id: selectedPrize.id,
             name: selectedPrize.name,
-            emoji: selectedPrize.emoji,
             imageUrl:
-              selectedPrize.image_url ||
-              (selectedPrize.emoji?.startsWith("/") || selectedPrize.emoji?.startsWith("http")
-                ? (selectedPrize.emoji as string)
-                : undefined),
+              selectedPrize.image_url,
             color: selectedPrize.color,
           }
         : null
@@ -263,8 +258,7 @@ export default function SpinPage() {
   const wheelPrizes = prizes.map((p) => ({
     id: p.id,
     name: p.name,
-    emoji: p.emoji,
-    imageUrl: p.image_url || (p.emoji?.startsWith("/") || p.emoji?.startsWith("http") ? (p.emoji as string) : undefined),
+    imageUrl: p.image_url,
     color: p.color,
     available: p.available !== undefined ? p.available : p.current_winners < p.max_winners,
   }))

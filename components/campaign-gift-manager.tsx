@@ -47,7 +47,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
 
   // New gift form state
   const [newName, setNewName] = useState("")
-  const [newEmoji, setNewEmoji] = useState("🎁")
   const [newMaxWinners, setNewMaxWinners] = useState("1")
   const [newColor, setNewColor] = useState("#D4A017")
   const [uploading, setUploading] = useState(false)
@@ -57,7 +56,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   // Edit gift state
   const [editingGift, setEditingGift] = useState<Gift | null>(null)
   const [editName, setEditName] = useState("")
-  const [editEmoji, setEditEmoji] = useState("")
   const [editMaxWinners, setEditMaxWinners] = useState("0")
   const [editColor, setEditColor] = useState("")
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null)
@@ -108,7 +106,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
     
     const res = await createCampaignGift(campaignId, {
       name: newName,
-      emoji: newEmoji,
       max_winners: parseInt(newMaxWinners) || 0,
       color: newColor,
       image_url: imageUrl || undefined
@@ -119,7 +116,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       setShowAddForm(false)
       // Reset form
       setNewName("")
-      setNewEmoji("🎁")
       setNewMaxWinners("1")
       setNewColor("#D4A017")
       setImageUrl(null)
@@ -132,7 +128,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   const openEditDialog = (gift: Gift) => {
     setEditingGift(gift)
     setEditName(gift.name)
-    setEditEmoji(gift.emoji)
     setEditMaxWinners(gift.max_winners.toString())
     setEditColor(gift.color || "#D4A017")
     setEditImageUrl(gift.image_url || null)
@@ -143,7 +138,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
 
     const res = await updateCampaignGift(editingGift.id, {
         name: editName,
-        emoji: editEmoji,
         max_winners: parseInt(editMaxWinners) || 0,
         color: editColor,
         image_url: editImageUrl || undefined
@@ -242,10 +236,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                 <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ex: Casquette" />
               </div>
               <div className="space-y-2">
-                <Label>Emoji</Label>
-                <Input value={newEmoji} onChange={e => setNewEmoji(e.target.value)} placeholder="🎁" />
-              </div>
-              <div className="space-y-2">
                 <Label>Gagnants max (Total)</Label>
                 <Input type="number" value={newMaxWinners} onChange={e => setNewMaxWinners(e.target.value)} min="0" />
               </div>
@@ -293,10 +283,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
               <div className="space-y-2">
                 <Label>Nom</Label>
                 <Input value={editName} onChange={e => setEditName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Emoji</Label>
-                <Input value={editEmoji} onChange={e => setEditEmoji(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Gagnants max (Total)</Label>
@@ -359,7 +345,6 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{gift.emoji}</span>
                   <div>
                     <CardTitle className="text-base">{gift.name}</CardTitle>
                     <CardDescription className="text-xs">Max: {gift.max_winners} gagnants</CardDescription>

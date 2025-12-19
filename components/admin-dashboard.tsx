@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CityManager } from "@/components/city-manager"
 import { CampaignManager } from "@/components/campaign-manager"
+import { Building2, LogOut, Megaphone } from "lucide-react"
 
 interface AdminDashboardProps {
   userId: string
@@ -21,48 +22,49 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-white to-blue-50 p-4">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 rounded-2xl p-4 md:p-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <img src="/casa_logo.png" alt="Logo" className="w-10 h-10 rounded-lg shadow-sm" />
-            <div className="space-y-0.5">
-              <h1 className="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-yellow-600">
-                Tableau de bord administrateur
-              </h1>
-              <p className="text-sm md:text-base text-amber-700">Gérer les campagnes et les villes</p>
+    <main className="min-h-screen bg-slate-50">
+      <div className="border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="/casa_logo.png" alt="Logo" className="h-10 w-10 rounded-lg ring-1 ring-slate-200 bg-white object-contain" />
+            <div className="min-w-0">
+              <div className="text-xl font-extrabold text-slate-900 truncate">Tableau de bord</div>
+              <div className="text-sm text-slate-600 truncate">Administration des campagnes</div>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button onClick={handleSignOut} variant="outline" className="w-full bg-gray-900 hover:bg-gray-800 text-white">
-              Se déconnecter
-            </Button>
-          </div>
+          <Button onClick={handleSignOut} className="bg-slate-900 text-white hover:bg-slate-800">
+            <LogOut className="mr-2 h-4 w-4" />
+            Se déconnecter
+          </Button>
         </div>
+      </div>
 
-        {/* Tabs */}
+      <div className="mx-auto max-w-7xl px-4 py-8">
         <Tabs defaultValue="campaigns" className="w-full">
-          <TabsList className="w-full justify-start h-auto p-2 bg-transparent gap-2 flex-wrap mb-8 border-b border-amber-200">
-            <TabsTrigger
-              value="campaigns"
-              className="rounded-full px-4 py-2 text-base font-semibold text-gray-900 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-amber-700"
-            >
-              Campagnes
-            </TabsTrigger>
-            <TabsTrigger
-              value="cities"
-              className="rounded-full px-4 py-2 text-base font-semibold text-gray-900 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:border data-[state=active]:border-amber-700"
-            >
-              Villes
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <TabsList className="inline-flex h-12 items-center gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+              <TabsTrigger
+                value="campaigns"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+              >
+                <Megaphone className="mr-2 h-4 w-4" />
+                Campagnes
+              </TabsTrigger>
+              <TabsTrigger
+                value="cities"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+              >
+                <Building2 className="mr-2 h-4 w-4" />
+                Villes
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="campaigns">
+          <TabsContent value="campaigns" className="mt-0">
             <CampaignManager />
           </TabsContent>
 
-          <TabsContent value="cities">
+          <TabsContent value="cities" className="mt-0">
             <CityManager />
           </TabsContent>
         </Tabs>

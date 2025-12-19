@@ -9,7 +9,6 @@ export type CampaignTheme = {
   secondaryColor?: string
   logoUrl?: string
   backgroundUrl?: string
-  loaderUrl?: string
   fontFamily?: string
 }
 
@@ -26,7 +25,6 @@ export type Campaign = {
 export interface Gift {
   id: string
   name: string
-  emoji: string
   image_url?: string
   max_winners: number
   current_winners: number
@@ -208,7 +206,6 @@ export async function getCampaignGifts(campaignId: string) {
 export async function createCampaignGift(campaignId: string, gift: {
   name: string
   image_url?: string
-  emoji?: string
   max_winners: number
   color?: string
 }) {
@@ -242,7 +239,6 @@ export async function createCampaignGift(campaignId: string, gift: {
 export async function updateCampaignGift(giftId: string, updates: {
   name?: string
   image_url?: string
-  emoji?: string
   max_winners?: number
   color?: string
 }) {
