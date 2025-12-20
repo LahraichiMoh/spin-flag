@@ -46,6 +46,7 @@ export default function SpinPage() {
   const [resultPrize, setResultPrize] = useState<{ id: string; name: string; imageUrl?: string; color?: string } | null>(null)
   const [spinError, setSpinError] = useState<string | null>(null)
   const [cityId, setCityId] = useState<string | undefined>(undefined)
+  const [creatingReplay, setCreatingReplay] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -72,8 +73,49 @@ export default function SpinPage() {
           .single()
 
         if (participantError) throw participantError
+
+        if (participantData.won) {
+          try {
+            const baseCode = String(participantData.code ?? "").trim()
+            const insertBase = {
+              name: participantData.name,
+              code: baseCode,
+              city: participantData.city,
+              agreed_to_terms: participantData.agreed_to_terms ?? true,
+              won: false,
+              prize_id: null,
+              campaign_id: participantData.campaign_id ?? null,
+            }
+
+            let newParticipant: any | null = null
+            const first = await supabase.from("participants").insert(insertBase).select("*").single()
+            if (!first.error) {
+              newParticipant = first.data
+            } else {
+              const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
+              if (!isDup) throw first.error
+
+              const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
+              const second = await supabase
+                .from("participants")
+                .insert({ ...insertBase, code: `${baseCode}-${suffix}` })
+                .select("*")
+                .single()
+              if (second.error) throw second.error
+              newParticipant = second.data
+            }
+
+            router.replace(`/spin/${newParticipant.id}`)
+            return
+          } catch (e) {
+            const msg =
+              e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
+            setSpinError(msg)
+          }
+        }
+
         setParticipant(participantData)
-        setHasSpun(!!participantData.won && !admin)
+        setHasSpun(!!participantData.won)
 
         // Get campaign if exists
         let currentCampaignId = participantData.campaign_id
@@ -124,7 +166,7 @@ export default function SpinPage() {
     }
 
     loadData()
-  }, [participantId])
+  }, [participantId, router])
 
   useEffect(() => {
     if (!participant) return
@@ -217,6 +259,49 @@ export default function SpinPage() {
     }
   }
 
+  const handleReplay = async () => {
+    if (!participant || creatingReplay) return
+    setSpinError(null)
+    setCreatingReplay(true)
+    try {
+      const supabase = createClient()
+      const baseCode = String(participant.code ?? "").trim()
+      const insertBase: any = {
+        name: participant.name,
+        code: baseCode,
+        city: participant.city,
+        agreed_to_terms: true,
+        won: false,
+        prize_id: null,
+        campaign_id: participant.campaign_id ?? null,
+      }
+
+      let newParticipant: any | null = null
+      const first = await supabase.from("participants").insert(insertBase).select("*").single()
+      if (!first.error) {
+        newParticipant = first.data
+      } else {
+        const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
+        if (!isDup) throw first.error
+
+        const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
+        const second = await supabase
+          .from("participants")
+          .insert({ ...insertBase, code: `${baseCode}-${suffix}` })
+          .select("*")
+          .single()
+        if (second.error) throw second.error
+        newParticipant = second.data
+      }
+
+      router.replace(`/spin/${newParticipant.id}`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
+      setSpinError(msg)
+      setCreatingReplay(false)
+    }
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
@@ -286,25 +371,33 @@ export default function SpinPage() {
         <div className="relative z-10 min-h-screen flex flex-col justify-center">
           <section className="w-full grid grid-cols-1 md:grid-cols-2 items-center px-6 md:px-12 gap-8">
             <div className="flex justify-center md:justify-start md:pl-10 lg:pl-20">
-              <SpinnerWheel
-                className="-mt-20 md:mt-0"
-                participantName={participant.name}
-                prizes={wheelPrizes}
-                onSpinComplete={handleSpinComplete}
-                hasSpun={hasSpun}
-                resultPrize={resultPrize}
-                spinError={spinError}
-                pointerSide="top"
-                spinLabel="Tournez pour la Gloire!"
-                theme="default"
-                customColors={{
-                  primary: campaign?.theme?.primaryColor,
-                  secondary: campaign?.theme?.secondaryColor
-                }}
-                campaignTheme={{
-                  backgroundUrl: campaign?.theme?.backgroundUrl
-                }}
-              />
+              <div className="flex flex-col items-center">
+                <SpinnerWheel
+                  className="-mt-20 md:mt-0"
+                  participantName={participant.name}
+                  prizes={wheelPrizes}
+                  onSpinComplete={handleSpinComplete}
+                  hasSpun={hasSpun}
+                  resultPrize={resultPrize}
+                  spinError={spinError}
+                  pointerSide="top"
+                  spinLabel="Tournez pour la Gloire!"
+                  theme="default"
+                  customColors={{
+                    primary: campaign?.theme?.primaryColor,
+                    secondary: campaign?.theme?.secondaryColor,
+                  }}
+                  campaignTheme={{
+                    backgroundUrl: campaign?.theme?.backgroundUrl,
+                  }}
+                />
+
+                {hasSpun && (
+                  <Button className="mt-4" onClick={handleReplay} disabled={creatingReplay}>
+                    {creatingReplay ? <Loader2 className="h-4 w-4 animate-spin" /> : "Nouveau tour"}
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="hidden md:flex justify-center items-center w-full">
             </div>
