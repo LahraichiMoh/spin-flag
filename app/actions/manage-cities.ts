@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import { revalidatePath } from "next/cache"
 
 export interface City {
@@ -26,15 +27,41 @@ export async function getCities() {
   return { success: true, data: data as City[] }
 }
 
-export async function createCity(name: string, username: string, password: string) {
+async function requireAdmin() {
   const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false as const, error: "Unauthorized" }
+
+  const { data: adminRow, error: adminError } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (adminError || !adminRow) return { success: false as const, error: "Unauthorized" }
+
+  return { success: true as const }
+}
+
+export async function createCity(name: string, username: string, password: string) {
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
+
+  const supabase = createServiceClient()
   
   // Check if username exists
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("cities")
     .select("id")
     .eq("username", username)
-    .single()
+    .maybeSingle()
+
+  if (existingError) {
+    return { success: false, error: existingError.message }
+  }
 
   if (existing) {
     return { success: false, error: "Ce nom d'utilisateur existe déjà." }
@@ -44,10 +71,14 @@ export async function createCity(name: string, username: string, password: strin
     .from("cities")
     .insert([{ name, username, password }])
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  if (!data) {
+    return { success: false, error: "Aucune ville n'a été créée." }
   }
 
   revalidatePath("/admin/dashboard")
@@ -55,16 +86,23 @@ export async function createCity(name: string, username: string, password: strin
 }
 
 export async function updateCity(id: string, updates: { name?: string; username?: string; password?: string }) {
-  const supabase = await createClient()
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
+
+  const supabase = createServiceClient()
 
   // If changing username, check uniqueness
   if (updates.username) {
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("cities")
       .select("id")
       .eq("username", updates.username)
       .neq("id", id) // Exclude self
-      .single()
+      .maybeSingle()
+
+    if (existingError) {
+      return { success: false, error: existingError.message }
+    }
 
     if (existing) {
       return { success: false, error: "Ce nom d'utilisateur est déjà pris." }
@@ -76,10 +114,14 @@ export async function updateCity(id: string, updates: { name?: string; username?
     .update(updates)
     .eq("id", id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  if (!data) {
+    return { success: false, error: "Ville introuvable." }
   }
 
   revalidatePath("/admin/dashboard")
@@ -87,7 +129,10 @@ export async function updateCity(id: string, updates: { name?: string; username?
 }
 
 export async function deleteCity(id: string) {
-  const supabase = await createClient()
+  const auth = await requireAdmin()
+  if (!auth.success) return auth
+
+  const supabase = createServiceClient()
 
   const { error } = await supabase
     .from("cities")

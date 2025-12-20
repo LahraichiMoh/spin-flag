@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { submitParticipation } from "@/app/actions/submit-participation"
 import type { Campaign } from "@/app/actions/campaigns"
 import Image from "next/image"
@@ -26,12 +25,11 @@ export function ParticipationForm({ campaign, city: prefilledCity }: Participati
   const [name, setName] = useState("")
   const [city, setCity] = useState(prefilledCity || "")
   const [code, setCode] = useState("")
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const isFormValid = name.trim().length > 0 && city.trim().length > 0 && code.trim().length > 0 && agreedToTerms
+  const isFormValid = name.trim().length > 0 && city.trim().length > 0 && code.trim().length > 0
   
   // Theme derived from campaign or defaults
   const logoUrl = campaign?.theme?.logoUrl || "/casa_logo.png"
@@ -50,13 +48,7 @@ export function ParticipationForm({ campaign, city: prefilledCity }: Participati
         return
       }
 
-      if (!agreedToTerms) {
-        setError("Veuillez accepter les conditions générales")
-        setIsLoading(false)
-        return
-      }
-
-      const result = await submitParticipation(name, code, city, agreedToTerms, campaign?.id)
+      const result = await submitParticipation(name, code, city, campaign?.id)
 
       if (!result.success) {
         setError(result.error || "Une erreur s'est produite")
@@ -227,19 +219,6 @@ export function ParticipationForm({ campaign, city: prefilledCity }: Participati
                   </p>
                 ))}
               </div>
-            </div>
-
-            <div className="flex items-start space-x-3 mt-6 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group">
-              <Checkbox
-                id="terms"
-                checked={agreedToTerms}
-                onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-                className="w-6 h-6 mt-0.5 border-2 border-gray-300 rounded-lg transition-all group-hover:border-yellow-400"
-              />
-              <Label htmlFor="terms" className="text-gray-900 font-medium text-base cursor-pointer leading-relaxed">
-                <span className="text-blue-600 font-semibold">J&apos;accepte les conditions générales</span>{" "}
-                <span className="text-red-500">*</span>
-              </Label>
             </div>
           </div>
 

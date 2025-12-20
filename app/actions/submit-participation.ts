@@ -1,11 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { getCurrentCity } from "@/app/actions/city-auth"
 // import { getAvailablePrizes } from "@/app/actions/campaigns"
 
-export async function submitParticipation(name: string, code: string, city: string, agreedToTerms: boolean, campaignId?: string) {
+export async function submitParticipation(name: string, code: string, city: string, campaignId?: string) {
   try {
     const supabase = createServiceClient()
 
@@ -16,10 +15,6 @@ export async function submitParticipation(name: string, code: string, city: stri
     // Validate inputs
     if (!name?.trim() || !code?.trim() || !finalCity?.trim()) {
       return { success: false, error: "Veuillez remplir tous les champs" }
-    }
-
-    if (!agreedToTerms) {
-      return { success: false, error: "Veuillez accepter les conditions générales" }
     }
 
     // Check campaign availability if campaignId is present
@@ -48,7 +43,7 @@ export async function submitParticipation(name: string, code: string, city: stri
       name: name.trim(),
       code: normalizedCode,
       city: finalCity.trim(),
-      agreed_to_terms: agreedToTerms,
+      agreed_to_terms: true,
       won: false,
     }
 

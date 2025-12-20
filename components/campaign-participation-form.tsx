@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2 } from "lucide-react"
 import { submitParticipation } from "@/app/actions/submit-participation"
 import { logoutCity } from "@/app/actions/city-auth"
-import { Checkbox } from "@/components/ui/checkbox"
 // import { getAvailablePrizes } from "@/app/actions/campaigns"
 
 interface CampaignParticipationFormProps {
@@ -28,7 +27,6 @@ interface CampaignParticipationFormProps {
 export function CampaignParticipationForm({ campaignId, campaignName, cityId, cityName, theme }: CampaignParticipationFormProps) {
   const [name, setName] = useState("")
   const [code, setCode] = useState("")
-  const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [checking, setChecking] = useState(false)
@@ -42,10 +40,6 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agreed) {
-        setError("Veuillez accepter les conditions")
-        return
-    }
     if (cityExhausted) {
         // setError("La période de participation est terminée pour aujourd'hui.")
         // return
@@ -55,7 +49,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
     setError("")
 
     try {
-      const res = await submitParticipation(name, code, cityName, agreed, campaignId)
+      const res = await submitParticipation(name, code, cityName, campaignId)
       if (res.success && res.participantId) {
         router.push(`/spin/${res.participantId}`)
       } else {
@@ -127,16 +121,6 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
             />
           </div>
           
-          <div className="flex items-center space-x-2 py-2">
-            <Checkbox id="terms" checked={agreed} onCheckedChange={(c) => setAgreed(c === true)} />
-            <label
-              htmlFor="terms"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              J&apos;accepte les conditions de participation
-            </label>
-          </div>
-
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <Button 

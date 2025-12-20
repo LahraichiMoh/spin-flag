@@ -194,15 +194,15 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                   Date {sortDesc ? "desc" : "asc"}
                 </Button>
                 {!onlyWinners && (
-                  <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
-                    <input
-                      type="checkbox"
-                      checked={winnersOnly}
-                      onChange={(e) => setWinnersOnly(e.target.checked)}
-                      className="accent-green-600"
-                    />
+                  <Button
+                    type="button"
+                    variant={winnersOnly ? "default" : "outline"}
+                    className="w-full sm:w-auto"
+                    onClick={() => setWinnersOnly((v) => !v)}
+                  >
+                    <Trophy className="h-4 w-4" />
                     Uniquement les gagnants
-                  </label>
+                  </Button>
                 )}
               </div>
               <div className="text-xs text-muted-foreground">

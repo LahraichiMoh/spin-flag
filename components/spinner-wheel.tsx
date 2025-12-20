@@ -219,7 +219,7 @@ export function SpinnerWheel({
                 >
                   {prizes.map((prize, index) => {
                     const startDeg = index * segmentAngle
-                    const labelOffset = Math.round(wheelSize * 0.31)
+                    const labelOffset = Math.round(wheelSize * 0.37)
                     return (
                       <div
                         key={prize.id}
@@ -236,7 +236,7 @@ export function SpinnerWheel({
                           <img
                             src={prize.imageUrl}
                             alt={prize.name}
-                            className="w-8 h-8 md:w-12 md:h-12 object-contain drop-shadow-md"
+                            className="w-12 h-12 md:w-14 md:h-14 object-contain drop-shadow-md"
                           />
                         ) : (
                           <span
