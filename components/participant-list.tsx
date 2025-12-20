@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Users, Trophy, CalendarDays } from "lucide-react"
+import { ArrowUpDown, CalendarDays, Trophy, Users } from "lucide-react"
 
 interface Gift {
   id: string
@@ -181,31 +181,33 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
             <CardDescription>{participants.length} entrées au total</CardDescription>
             </CardHeader>
             <CardContent>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
-                placeholder="Rechercher un nom ou un code..."
-                value={participantQuery}
-                onChange={(e) => setParticipantQuery(e.target.value)}
-                className="w-full sm:max-w-xs"
+                  placeholder="Rechercher un nom ou un code..."
+                  value={participantQuery}
+                  onChange={(e) => setParticipantQuery(e.target.value)}
+                  className="w-full sm:w-[320px]"
                 />
-                <Button
-                variant="outline"
-                className="text-gray-700 w-full sm:w-auto"
-                onClick={() => setSortDesc((v) => !v)}
-                >
-                Trier par date {sortDesc ? "▼" : "▲"}
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSortDesc((v) => !v)}>
+                  <ArrowUpDown className="h-4 w-4" />
+                  Date {sortDesc ? "desc" : "asc"}
                 </Button>
                 {!onlyWinners && (
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
+                  <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
+                    <input
                       type="checkbox"
                       checked={winnersOnly}
                       onChange={(e) => setWinnersOnly(e.target.checked)}
                       className="accent-green-600"
-                  />
-                  Uniquement les gagnants
+                    />
+                    Uniquement les gagnants
                   </label>
                 )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {filteredParticipants.length} résultat{filteredParticipants.length > 1 ? "s" : ""}
+              </div>
             </div>
             
             {/* Mobile View */}
@@ -249,56 +251,72 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
             </div>
 
             {/* Desktop View */}
-            <div className="overflow-x-auto rounded-lg border border-gray-200 hidden sm:block">
-                <div className="min-w-[900px]">
-                  <div className="grid grid-cols-6 gap-4 py-3 border-b text-sm font-medium text-muted-foreground">
-                    <div className="col-span-2">Nom</div>
-                    <div>Code</div>
-                    <div>Ville</div>
-                    <div>Résultat</div>
-                    <div className="text-right">Date</div>
-                  </div>
-                  <div className="space-y-4 mt-2">
+            <div className="hidden sm:block overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="max-h-[65vh] overflow-auto">
+                <table className="min-w-[920px] w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-gray-200">
+                    <tr className="text-xs font-semibold text-slate-600">
+                      <th className="px-4 py-3 text-left">Nom</th>
+                      <th className="px-4 py-3 text-left">Code</th>
+                      <th className="px-4 py-3 text-left">Ville</th>
+                      <th className="px-4 py-3 text-left">Résultat</th>
+                      <th className="px-4 py-3 text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {filteredParticipants.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">Aucun participant trouvé</div>
+                      <tr>
+                        <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                          Aucun participant trouvé
+                        </td>
+                      </tr>
                     ) : (
-                      filteredParticipants.map((participant) => {
-                        const prize = participant.prize_id ? prizeMap[participant.prize_id] : null
+                      filteredParticipants.map((row) => {
+                        const prize = row.prize_id ? prizeMap[row.prize_id] : null
                         return (
-                          <div key={participant.id} className="grid grid-cols-6 gap-4 items-center text-sm">
-                            <div className="col-span-2 font-medium">{participant.name}</div>
-                            <div className="font-mono text-xs text-muted-foreground">{participant.code}</div>
-                            <div className="text-muted-foreground">{participant.city || "-"}</div>
-                            <div>
-                              {participant.won && prize ? (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                                  <Trophy className="h-3 w-3" />
+                          <tr key={row.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">{row.name}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">{row.code}</td>
+                            <td className="px-4 py-3">
+                              {row.city ? (
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                                  {row.city}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.won && prize ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                                  <Trophy className="h-3.5 w-3.5" />
                                   {prize.name}
                                 </span>
-                              ) : participant.won ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
+                              ) : row.won ? (
+                                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
                                   Gagné (Inconnu)
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
                                   Perdu
                                 </span>
                               )}
-                            </div>
-                            <div className="text-right text-muted-foreground text-xs">
-                              {new Date(participant.created_at).toLocaleDateString("fr-FR", {
+                            </td>
+                            <td className="px-4 py-3 text-right text-xs text-slate-500 whitespace-nowrap">
+                              {new Date(row.created_at).toLocaleDateString("fr-FR", {
                                 day: "numeric",
                                 month: "short",
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         )
                       })
                     )}
-                  </div>
-                </div>
+                  </tbody>
+                </table>
+              </div>
             </div>
             </CardContent>
         </Card>

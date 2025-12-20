@@ -393,7 +393,12 @@ export default function SpinPage() {
                 />
 
                 {hasSpun && (
-                  <Button className="mt-4" onClick={handleReplay} disabled={creatingReplay}>
+                  <Button
+                    className="mt-4 w-full max-w-xs shadow-lg border border-white/20 bg-white/90 text-slate-900 hover:bg-white"
+                    style={campaign?.theme?.primaryColor ? { backgroundColor: campaign.theme.primaryColor, color: "white" } : undefined}
+                    onClick={handleReplay}
+                    disabled={creatingReplay}
+                  >
                     {creatingReplay ? <Loader2 className="h-4 w-4 animate-spin" /> : "Nouveau tour"}
                   </Button>
                 )}
