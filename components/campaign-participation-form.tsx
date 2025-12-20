@@ -111,12 +111,12 @@ export function CampaignParticipationForm({ campaignId, campaignName, cityId, ci
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="code">Code Animateur</Label>
+            <Label htmlFor="code">Emplacement</Label>
             <Input 
               id="code" 
               value={code} 
               onChange={(e) => setCode(e.target.value)} 
-              placeholder="ABC-123"
+              placeholder="Emplacement du Bar"
               required 
             />
           </div>

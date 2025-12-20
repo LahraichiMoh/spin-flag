@@ -184,7 +184,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
             <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
-                  placeholder="Rechercher un nom ou un code..."
+                  placeholder="Rechercher un nom ou un emplacement..."
                   value={participantQuery}
                   onChange={(e) => setParticipantQuery(e.target.value)}
                   className="w-full sm:w-[320px]"
@@ -257,7 +257,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-gray-200">
                     <tr className="text-xs font-semibold text-slate-600">
                       <th className="px-4 py-3 text-left">Nom</th>
-                      <th className="px-4 py-3 text-left">Code</th>
+                      <th className="px-4 py-3 text-left">Emplacement</th>
                       <th className="px-4 py-3 text-left">Ville</th>
                       <th className="px-4 py-3 text-left">Résultat</th>
                       <th className="px-4 py-3 text-right">Date</th>
