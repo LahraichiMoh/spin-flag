@@ -1,9 +1,9 @@
 "use server"
 
 import { createServiceClient } from "@/lib/supabase/service"
-import { getAvailablePrizes } from "@/app/actions/campaigns"
+import { getAvailablePrizes, type Campaign, type Gift } from "@/app/actions/campaigns"
 
-export async function finalizeSpin(participantId: string, selectedPrizeId: string, cityId?: string, allowRespin?: boolean) {
+export async function finalizeSpin(participantId: string, selectedPrizeId: string, cityId?: string, _allowRespin?: boolean) {
   try {
     const supabase = createServiceClient()
 
@@ -131,5 +131,56 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return { success: false, error: message }
+  }
+}
+
+export async function getSpinData(participantId: string) {
+  try {
+    const supabase = createServiceClient()
+
+    const { data: participant, error: participantError } = await supabase
+      .from("participants")
+      .select("id, name, code, city, won, prize_id, campaign_id")
+      .eq("id", participantId)
+      .single()
+
+    if (participantError || !participant) {
+      return { success: false as const, error: participantError?.message || "Participant introuvable" }
+    }
+
+    let campaign: Campaign | null = null
+    if (participant.campaign_id) {
+      const { data: campaignRow, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", participant.campaign_id)
+        .single()
+      if (!campaignError && campaignRow) {
+        campaign = campaignRow as Campaign
+      }
+    }
+
+    let cityId: string | undefined
+    if (participant.city) {
+      const { data: cityRows } = await supabase.from("cities").select("id").ilike("name", participant.city).limit(1)
+      if (cityRows && cityRows.length > 0) cityId = cityRows[0].id
+    }
+
+    let prizes: Gift[] = []
+    if (participant.campaign_id) {
+      const res = await getAvailablePrizes(participant.campaign_id, cityId, participant.city)
+      prizes = res.success && res.data ? (res.data as Gift[]) : []
+    } else {
+      let query = supabase.from("gifts").select("*")
+      const ownerId = process.env.NEXT_PUBLIC_GIFTS_OWNER_ID || ""
+      if (ownerId) query = query.eq("created_by", ownerId)
+      const { data: giftsData } = await query.order("created_at", { ascending: true })
+      prizes = (giftsData || []) as Gift[]
+    }
+
+    return { success: true as const, data: { participant, campaign, prizes, cityId } }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return { success: false as const, error: message }
   }
 }

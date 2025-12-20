@@ -4,13 +4,10 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { SpinnerWheel } from "@/components/spinner-wheel"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { finalizeSpin } from "@/app/actions/finalize-spin"
+import { finalizeSpin, getSpinData } from "@/app/actions/finalize-spin"
 import { Loader2 } from "lucide-react"
-
-import { getAvailablePrizes, type Campaign } from "@/app/actions/campaigns"
+import { type Campaign } from "@/app/actions/campaigns"
 
 interface Participant {
   id: string
@@ -65,14 +62,9 @@ export default function SpinPage() {
         }
         setIsAdmin(admin)
 
-        // Get participant data
-        const { data: participantData, error: participantError } = await supabase
-          .from("participants")
-          .select("*")
-          .eq("id", participantId)
-          .single()
-
-        if (participantError) throw participantError
+        const spinData = await getSpinData(participantId)
+        if (!spinData.success || !spinData.data) throw new Error(spinData.error || "Failed to load spin data")
+        const participantData = spinData.data.participant as any
 
         if (participantData.won) {
           try {
@@ -87,25 +79,23 @@ export default function SpinPage() {
               campaign_id: participantData.campaign_id ?? null,
             }
 
-            let newParticipant: any | null = null
-            const first = await supabase.from("participants").insert(insertBase).select("*").single()
+            const firstId = crypto.randomUUID()
+            const first = await supabase.from("participants").insert({ ...insertBase, id: firstId })
             if (!first.error) {
-              newParticipant = first.data
-            } else {
-              const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
-              if (!isDup) throw first.error
-
-              const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
-              const second = await supabase
-                .from("participants")
-                .insert({ ...insertBase, code: `${baseCode}-${suffix}` })
-                .select("*")
-                .single()
-              if (second.error) throw second.error
-              newParticipant = second.data
+              router.replace(`/spin/${firstId}`)
+              return
             }
 
-            router.replace(`/spin/${newParticipant.id}`)
+            const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
+            if (!isDup) throw first.error
+
+            const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
+            const secondId = crypto.randomUUID()
+            const second = await supabase
+              .from("participants")
+              .insert({ ...insertBase, id: secondId, code: `${baseCode}-${suffix}` })
+            if (second.error) throw second.error
+            router.replace(`/spin/${secondId}`)
             return
           } catch (e) {
             const msg =
@@ -117,46 +107,9 @@ export default function SpinPage() {
         setParticipant(participantData)
         setHasSpun(!!participantData.won)
 
-        // Get campaign if exists
-        let currentCampaignId = participantData.campaign_id
-        if (currentCampaignId) {
-           const { data: campaignData, error: campaignError } = await supabase
-             .from("campaigns")
-             .select("*")
-             .eq("id", currentCampaignId)
-             .single()
-           
-           if (!campaignError && campaignData) {
-             setCampaign(campaignData as Campaign)
-           }
-        }
-
-        // Get gifts
-        if (currentCampaignId) {
-             let resolvedCityId: string | undefined
-             if (participantData.city) {
-                 const { data: cityRows } = await supabase.from("cities").select("id").ilike("name", participantData.city).limit(1)
-                 if (cityRows && cityRows.length > 0) resolvedCityId = cityRows[0].id
-             }
-             setCityId(resolvedCityId)
-
-             const res = await getAvailablePrizes(currentCampaignId, resolvedCityId, participantData.city)
-             if (res.success && res.data) {
-                 setPrizes(res.data)
-             } else {
-                 // Fallback or empty
-                 setPrizes([])
-             }
-        } else {
-             // Fallback for legacy
-             let query = supabase.from("gifts").select("*")
-             const ownerId = process.env.NEXT_PUBLIC_GIFTS_OWNER_ID || ""
-             if (ownerId) query = query.eq("created_by", ownerId)
-             
-             const { data: giftsData, error: giftsError } = await query.order("created_at", { ascending: true })
-             if (giftsError) throw giftsError
-             setPrizes(giftsData || [])
-        }
+        setCampaign(spinData.data.campaign as any)
+        setPrizes((spinData.data.prizes as any) || [])
+        setCityId(spinData.data.cityId)
 
         setLoading(false)
       } catch (error) {
@@ -276,25 +229,24 @@ export default function SpinPage() {
         campaign_id: participant.campaign_id ?? null,
       }
 
-      let newParticipant: any | null = null
-      const first = await supabase.from("participants").insert(insertBase).select("*").single()
+      const firstId = crypto.randomUUID()
+      const first = await supabase.from("participants").insert({ ...insertBase, id: firstId })
       if (!first.error) {
-        newParticipant = first.data
-      } else {
-        const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
-        if (!isDup) throw first.error
-
-        const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
-        const second = await supabase
-          .from("participants")
-          .insert({ ...insertBase, code: `${baseCode}-${suffix}` })
-          .select("*")
-          .single()
-        if (second.error) throw second.error
-        newParticipant = second.data
+        router.replace(`/spin/${firstId}`)
+        return
       }
 
-      router.replace(`/spin/${newParticipant.id}`)
+      const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
+      if (!isDup) throw first.error
+
+      const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
+      const secondId = crypto.randomUUID()
+      const second = await supabase
+        .from("participants")
+        .insert({ ...insertBase, id: secondId, code: `${baseCode}-${suffix}` })
+      if (second.error) throw second.error
+
+      router.replace(`/spin/${secondId}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
       setSpinError(msg)
@@ -314,40 +266,20 @@ export default function SpinPage() {
   }
 
   if (!participant) {
-    const bgUrl = campaign?.theme?.backgroundUrl || process.env.NEXT_PUBLIC_SPIN_BACKGROUND_URL || "/flag-back.jpg"
-    const logoUrl = campaign?.theme?.logoUrl || process.env.NEXT_PUBLIC_SPIN_LOGO_URL || "/casa_logo.png"
     return (
-      <main
-        className="min-h-screen relative overflow-hidden"
-        style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center left" } : {}}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/10 pointer-events-none" />
-        <div className="relative z-10 min-h-screen flex flex-col">
-          <header className="p-4">
-            {logoUrl && (
-              <Image
-                src={logoUrl}
-                alt="Brand Logo"
-                width={160}
-                height={160}
-                priority
-                className="h-32 w-auto max-w-[80vw] mx-auto md:mx-0"
-              />
-            )}
-          </header>
-          <section className="flex-1 flex items-center justify-center px-6">
-            <div className="relative w-[92vw] max-w-md mx-auto rounded-2xl border-2 border-yellow-500 shadow-2xl bg-gradient-to-b from-yellow-50 to-amber-100 p-8 text-center">
-              <p className="text-2xl md:text-3xl font-extrabold text-amber-700">Une erreur s’est produite</p>
-              <p className="text-md md:text-lg font-medium text-amber-800 mt-2">Impossible de charger les données du tirage.</p>
-              <button
-                onClick={() => router.push("/")}
-                className="mt-6 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg px-5 py-3"
-              >
-                Réessayer
-              </button>
-            </div>
-          </section>
-        </div>
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center p-6">
+        <section className="w-full max-w-md">
+          <div className="rounded-2xl border border-slate-200 shadow-xl bg-white p-8 text-center">
+            <p className="text-2xl md:text-3xl font-extrabold text-slate-900">Une erreur s’est produite</p>
+            <p className="text-md md:text-lg font-medium text-slate-600 mt-2">Impossible de charger les données du tirage.</p>
+            <button
+              onClick={() => router.push("/")}
+              className="mt-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg px-5 py-3"
+            >
+              Réessayer
+            </button>
+          </div>
+        </section>
       </main>
     )
   }
