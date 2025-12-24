@@ -236,7 +236,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                 <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ex: Casquette" />
               </div>
               <div className="space-y-2">
-                <Label>Gagnants max (Total)</Label>
+                <Label>Stock global (optionnel)</Label>
                 <Input type="number" value={newMaxWinners} onChange={e => setNewMaxWinners(e.target.value)} min="0" />
               </div>
               <div className="space-y-2">
@@ -285,7 +285,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                 <Input value={editName} onChange={e => setEditName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Gagnants max (Total)</Label>
+                <Label>Stock global (optionnel)</Label>
                 <Input 
                   type="number" 
                   value={editMaxWinners} 
@@ -347,7 +347,14 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                 <div className="flex items-center gap-2">
                   <div>
                     <CardTitle className="text-base">{gift.name}</CardTitle>
-                    <CardDescription className="text-xs">Max: {gift.max_winners} gagnants</CardDescription>
+                    <CardDescription className="text-xs">
+                      Stock global:{" "}
+                      {(gift.venue_total_max_winners || 0) > 0
+                        ? gift.venue_total_max_winners
+                        : gift.max_winners === 0
+                          ? "∞"
+                          : gift.max_winners}
+                    </CardDescription>
                   </div>
                 </div>
                 {gift.image_url && (
@@ -357,22 +364,23 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
             </CardHeader>
             <CardContent className="pt-2 flex flex-col gap-2">
               <div className="text-sm text-slate-500">
-                Gagnés: {gift.current_winners} / {gift.max_winners}
+                Utilisés: {gift.current_winners} /{" "}
+                {(gift.venue_total_max_winners || 0) > 0
+                  ? gift.venue_total_max_winners
+                  : gift.max_winners === 0
+                    ? "∞"
+                    : gift.max_winners}
               </div>
               
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs">
-                      Limites par ville
+                    <Button variant="outline" size="sm" className="flex-1 text-xs min-w-[160px]">
+                      Stock établissement
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
-                     <GiftLimitManager 
-                       giftId={gift.id} 
-                       giftName={gift.name} 
-                       onLimitUpdated={loadGifts}
-                     />
+                    <GiftLimitManager giftId={gift.id} giftName={gift.name} scope="venue" onLimitUpdated={loadGifts} />
                   </DialogContent>
                 </Dialog>
                 

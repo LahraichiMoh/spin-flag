@@ -14,6 +14,9 @@ interface Participant {
   name: string
   code: string
   city: string
+  city_id?: string | null
+  venue_id?: string | null
+  venue_type?: string | null
   won: boolean
   prize_id: string | null
   campaign_id?: string
@@ -65,14 +68,17 @@ export default function SpinPage() {
         const spinData = await getSpinData(participantId)
         if (!spinData.success || !spinData.data) throw new Error(spinData.error || "Failed to load spin data")
         const participantData = spinData.data.participant as any
-
+        
         if (participantData.won) {
           try {
             const baseCode = String(participantData.code ?? "").trim()
-            const insertBase = {
+            const insertBase: any = {
               name: participantData.name,
               code: baseCode,
               city: participantData.city,
+              city_id: participantData.city_id ?? null,
+              venue_id: participantData.venue_id ?? null,
+              venue_type: participantData.venue_type ?? null,
               agreed_to_terms: participantData.agreed_to_terms ?? true,
               won: false,
               prize_id: null,
@@ -98,8 +104,7 @@ export default function SpinPage() {
             router.replace(`/spin/${secondId}`)
             return
           } catch (e) {
-            const msg =
-              e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
+            const msg = e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
             setSpinError(msg)
           }
         }
@@ -223,6 +228,9 @@ export default function SpinPage() {
         name: participant.name,
         code: baseCode,
         city: participant.city,
+        city_id: participant.city_id ?? null,
+        venue_id: participant.venue_id ?? null,
+        venue_type: participant.venue_type ?? null,
         agreed_to_terms: true,
         won: false,
         prize_id: null,

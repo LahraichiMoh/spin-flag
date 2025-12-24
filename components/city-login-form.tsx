@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { loginCity } from "@/app/actions/city-auth"
+import { loginCampaignAccess } from "@/app/actions/campaigns"
 import { Loader2 } from "lucide-react"
 
 interface CityLoginFormProps {
   campaignName: string
+  campaignSlug: string
   theme?: {
     primaryColor?: string
     secondaryColor?: string
@@ -18,7 +19,7 @@ interface CityLoginFormProps {
   }
 }
 
-export function CityLoginForm({ campaignName, theme }: CityLoginFormProps) {
+export function CampaignLoginForm({ campaignName, campaignSlug, theme }: CityLoginFormProps) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -31,7 +32,7 @@ export function CityLoginForm({ campaignName, theme }: CityLoginFormProps) {
     setError("")
 
     try {
-      const result = await loginCity(username, password)
+      const result = await loginCampaignAccess(campaignSlug, username, password)
 
       if (result.success) {
         router.refresh()
@@ -58,21 +59,21 @@ export function CityLoginForm({ campaignName, theme }: CityLoginFormProps) {
           </div>
         )}
         <CardTitle className="text-2xl font-bold" style={{ color: theme?.primaryColor }}>
-          Connexion Ville
+          Connexion Campagne
         </CardTitle>
         <CardDescription>
-          Connectez-vous avec les accès de votre ville pour participer à {campaignName}
+          Connectez-vous avec les accès de la campagne pour participer à {campaignName}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Identifiant Ville</Label>
+            <Label htmlFor="username">Identifiant</Label>
             <Input
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="ex: casablanca"
+              placeholder="ex: campagne1"
               required
             />
           </div>

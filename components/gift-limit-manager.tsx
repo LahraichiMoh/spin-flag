@@ -6,20 +6,29 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { getCities, type City } from "@/app/actions/manage-cities"
-import { getGiftCityLimits, upsertGiftCityLimit, type GiftCityLimit } from "@/app/actions/gift-limits"
+import {
+  getGiftCityLimits,
+  getGiftVenueLimits,
+  getVenuesForLimits,
+  upsertGiftCityLimit,
+  upsertGiftVenueLimit,
+  type VenueForLimit,
+} from "@/app/actions/gift-limits"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 
 interface GiftLimitManagerProps {
   giftId: string
   giftName: string
+  scope?: "city" | "venue"
   onClose?: () => void
   onLimitUpdated?: () => void
 }
 
-export function GiftLimitManager({ giftId, giftName, onClose, onLimitUpdated }: GiftLimitManagerProps) {
+export function GiftLimitManager({ giftId, giftName, scope = "city", onClose, onLimitUpdated }: GiftLimitManagerProps) {
   const [cities, setCities] = useState<City[]>([])
-  const [limits, setLimits] = useState<Record<string, number | "">>({})
+  const [venues, setVenues] = useState<VenueForLimit[]>([])
+  const [limits, setLimits] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [bulkSaving, setBulkSaving] = useState(false)
@@ -30,37 +39,56 @@ export function GiftLimitManager({ giftId, giftName, onClose, onLimitUpdated }: 
 
   const loadData = async () => {
     setLoading(true)
-    const [citiesRes, limitsRes] = await Promise.all([
-      getCities(),
-      getGiftCityLimits(giftId)
-    ])
+    if (scope === "venue") {
+      const [venuesRes, limitsRes] = await Promise.all([getVenuesForLimits(), getGiftVenueLimits(giftId)])
 
-    if (citiesRes.success && citiesRes.data) {
-      setCities(citiesRes.data)
-    }
+      const venueRows = venuesRes.success && venuesRes.data ? venuesRes.data : []
+      setVenues(venueRows)
 
-    if (limitsRes.success && limitsRes.data) {
       const newLimits: Record<string, number> = {}
-      limitsRes.data.forEach((l) => {
-        newLimits[l.city_id] = l.max_winners
+      venueRows.forEach((v) => {
+        newLimits[v.id] = 0
       })
+      if (limitsRes.success && limitsRes.data) {
+        limitsRes.data.forEach((l) => {
+          newLimits[l.venue_id] = l.max_winners
+        })
+      }
+      setLimits(newLimits)
+    } else {
+      const [citiesRes, limitsRes] = await Promise.all([getCities(), getGiftCityLimits(giftId)])
+
+      const cityRows = citiesRes.success && citiesRes.data ? citiesRes.data : []
+      setCities(cityRows)
+
+      const newLimits: Record<string, number> = {}
+      cityRows.forEach((c) => {
+        newLimits[c.id] = 0
+      })
+      if (limitsRes.success && limitsRes.data) {
+        limitsRes.data.forEach((l) => {
+          newLimits[l.city_id] = l.max_winners
+        })
+      }
       setLimits(newLimits)
     }
     setLoading(false)
   }
 
-  const handleSave = async (cityId: string, limit: number | "") => {
-    if (limit === "") return
-    setSaving(cityId)
-    const res = await upsertGiftCityLimit(giftId, cityId, limit as number)
+  const handleSave = async (itemId: string, limit: number) => {
+    setSaving(itemId)
+    const res =
+      scope === "venue"
+        ? await upsertGiftVenueLimit(giftId, itemId, limit)
+        : await upsertGiftCityLimit(giftId, itemId, limit)
     setSaving(null)
-    
+
     if (!res.success) {
       toast.error("Erreur lors de l'enregistrement")
       return
     }
 
-    setLimits(prev => ({ ...prev, [cityId]: limit }))
+    setLimits((prev) => ({ ...prev, [itemId]: limit }))
     if (onLimitUpdated) onLimitUpdated()
     toast.success("Limite enregistrée")
   }
@@ -69,10 +97,19 @@ export function GiftLimitManager({ giftId, giftName, onClose, onLimitUpdated }: 
     setBulkSaving(true)
     let hasError = false
     
-    for (const city of cities) {
-      const val = limits[city.id]
-      if (val !== undefined && val !== "") {
-        const res = await upsertGiftCityLimit(giftId, city.id, val as number)
+    if (scope === "venue") {
+      for (const venue of venues) {
+        const val = limits[venue.id] ?? 0
+        const res = await upsertGiftVenueLimit(giftId, venue.id, val)
+        if (!res.success) {
+          hasError = true
+          toast.error(`Erreur pour ${venue.name}`)
+        }
+      }
+    } else {
+      for (const city of cities) {
+        const val = limits[city.id] ?? 0
+        const res = await upsertGiftCityLimit(giftId, city.id, val)
         if (!res.success) {
           hasError = true
           toast.error(`Erreur pour ${city.name}`)
@@ -94,9 +131,13 @@ export function GiftLimitManager({ giftId, giftName, onClose, onLimitUpdated }: 
   return (
     <Card className="border-amber-200 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-lg">Limites par ville : {giftName}</CardTitle>
+        <CardTitle className="text-lg">
+          {scope === "venue" ? "Stock par établissement" : "Limites par ville"} : {giftName}
+        </CardTitle>
         <CardDescription>
-          Définissez le nombre maximum de gagnants pour ce cadeau dans chaque ville.
+          {scope === "venue"
+            ? "Définissez le stock maximum de ce cadeau pour chaque restau / bar. Si vide, le cadeau n'est pas disponible pour cet établissement."
+            : "Définissez le nombre maximum de gagnants pour ce cadeau dans chaque ville."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
@@ -111,39 +152,79 @@ export function GiftLimitManager({ giftId, giftName, onClose, onLimitUpdated }: 
             Enregistrer toutes les limites
           </Button>
         </div>
-        {cities.map((city) => (
-          <div key={city.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-            <span className="font-medium text-slate-700">{city.name}</span>
-            <div className="flex items-center gap-3">
-              <Label className="text-xs text-slate-500 uppercase">Max</Label>
-              <Input
-                type="number"
-                min="0"
-                className="w-20 text-right"
-                placeholder="∞"
-                value={limits[city.id] ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value === "" ? "" : parseInt(e.target.value)
-                  setLimits(prev => ({ ...prev, [city.id]: val }))
-                }}
-              />
-              <Button 
-                size="sm" 
-                variant="ghost"
-                disabled={saving === city.id || limits[city.id] === undefined || limits[city.id] === ""}
-                onClick={() => {
-                   const val = limits[city.id]
-                   if (val !== undefined) handleSave(city.id, val)
-                }}
-              >
-                {saving === city.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-        ))}
-        {cities.length === 0 && (
+        {scope === "venue"
+          ? venues.map((venue) => (
+              <div key={venue.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                <div className="flex flex-col">
+                  <span className="font-medium text-slate-700">
+                    {venue.name}{venue.type ? ` (${venue.type})` : ""}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {venue.city_name || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs text-slate-500 uppercase">Max</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    className="w-20 text-right"
+                    value={limits[venue.id] ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const next = raw === "" ? 0 : Math.max(0, Number(raw) || 0)
+                      setLimits((prev) => ({ ...prev, [venue.id]: next }))
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={saving === venue.id}
+                    onClick={() => {
+                      const val = limits[venue.id] ?? 0
+                      handleSave(venue.id, val)
+                    }}
+                  >
+                    {saving === venue.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            ))
+          : cities.map((city) => (
+              <div key={city.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                <span className="font-medium text-slate-700">{city.name}</span>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs text-slate-500 uppercase">Max</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    className="w-20 text-right"
+                    value={limits[city.id] ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const next = raw === "" ? 0 : Math.max(0, Number(raw) || 0)
+                      setLimits((prev) => ({ ...prev, [city.id]: next }))
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={saving === city.id}
+                    onClick={() => {
+                      const val = limits[city.id] ?? 0
+                      handleSave(city.id, val)
+                    }}
+                  >
+                    {saving === city.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            ))}
+        {scope === "venue" ? (
+          venues.length === 0 ? <p className="text-center text-slate-500 italic">Aucun établissement trouvé.</p> : null
+        ) : cities.length === 0 ? (
           <p className="text-center text-slate-500 italic">Aucune ville trouvée.</p>
-        )}
+        ) : null}
         {onClose && (
             <div className="pt-4 flex justify-end">
                 <Button variant="outline" onClick={onClose}>Fermer</Button>

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
-import { getCampaignBySlug } from "@/app/actions/campaigns"
-import { getCurrentCity } from "@/app/actions/city-auth"
-import { CityLoginForm } from "@/components/city-login-form"
+import { getCampaignBySlug, getCurrentCampaignAccess } from "@/app/actions/campaigns"
+import { CampaignLoginForm } from "@/components/city-login-form"
 import { CampaignParticipationForm } from "@/components/campaign-participation-form"
 
 export default async function CampaignPage({ params }: { params: { slug: string } }) {
@@ -13,7 +12,8 @@ export default async function CampaignPage({ params }: { params: { slug: string 
   }
 
   const campaign = res.data
-  const city = await getCurrentCity()
+  const access = await getCurrentCampaignAccess()
+  const isAuthed = access?.id === campaign.id
 
   return (
     <div 
@@ -26,17 +26,16 @@ export default async function CampaignPage({ params }: { params: { slug: string 
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       
       <div className="relative z-10 w-full max-w-md">
-        {city ? (
+        {isAuthed ? (
           <CampaignParticipationForm 
             campaignId={campaign.id}
             campaignName={campaign.name}
-            cityId={city.id}
-            cityName={city.name}
             theme={campaign.theme}
           />
         ) : (
-          <CityLoginForm 
+          <CampaignLoginForm 
             campaignName={campaign.name}
+            campaignSlug={campaign.slug}
             theme={campaign.theme}
           />
         )}

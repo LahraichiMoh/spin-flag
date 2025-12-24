@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
+import { getGiftGlobalTotalsFromVenueLimits } from "@/app/actions/gift-limits"
 
 export type CampaignTheme = {
   primaryColor?: string
@@ -19,6 +21,7 @@ export type Campaign = {
   description?: string
   theme: CampaignTheme
   is_active: boolean
+  access_username?: string
   created_at: string
 }
 
@@ -32,6 +35,15 @@ export interface Gift {
   campaign_id?: string
   created_by?: string
   available?: boolean // Computed field
+  venue_total_max_winners?: number
+}
+
+function isMissingAccessColumnsError(err: unknown) {
+  const msg = typeof (err as any)?.message === "string" ? ((err as any).message as string).toLowerCase() : ""
+  return (
+    msg.includes("does not exist") &&
+    (msg.includes("access_username") || msg.includes("access_password"))
+  )
 }
 
 export async function getCampaigns() {
@@ -40,10 +52,21 @@ export async function getCampaigns() {
     
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*")
+      .select("id, name, slug, description, theme, is_active, access_username, created_at")
       .order("created_at", { ascending: false })
   
     if (error) {
+      if (isMissingAccessColumnsError(error)) {
+        const legacy = await supabase
+          .from("campaigns")
+          .select("id, name, slug, description, theme, is_active, created_at")
+          .order("created_at", { ascending: false })
+        if (legacy.error) {
+          console.error("Error fetching campaigns:", legacy.error)
+          return { success: false, error: legacy.error.message }
+        }
+        return { success: true, data: legacy.data as Campaign[] }
+      }
       console.error("Error fetching campaigns:", error)
       return { success: false, error: error.message }
     }
@@ -62,11 +85,23 @@ export async function getCampaignBySlug(slug: string) {
   
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*")
+      .select("id, name, slug, description, theme, is_active, access_username, created_at")
       .eq("slug", slug)
       .single()
   
     if (error) {
+      if (isMissingAccessColumnsError(error)) {
+        const legacy = await supabase
+          .from("campaigns")
+          .select("id, name, slug, description, theme, is_active, created_at")
+          .eq("slug", slug)
+          .single()
+        if (legacy.error) {
+          console.error(`Error fetching campaign with slug ${slug}:`, legacy.error)
+          return { success: false, error: legacy.error.message }
+        }
+        return { success: true, data: legacy.data as Campaign }
+      }
       console.error(`Error fetching campaign with slug ${slug}:`, error)
       return { success: false, error: error.message }
     }
@@ -85,11 +120,23 @@ export async function getCampaignById(id: string) {
   
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*")
+      .select("id, name, slug, description, theme, is_active, access_username, created_at")
       .eq("id", id)
       .single()
   
     if (error) {
+      if (isMissingAccessColumnsError(error)) {
+        const legacy = await supabase
+          .from("campaigns")
+          .select("id, name, slug, description, theme, is_active, created_at")
+          .eq("id", id)
+          .single()
+        if (legacy.error) {
+          console.error(`Error fetching campaign with id ${id}:`, legacy.error)
+          return { success: false, error: legacy.error.message }
+        }
+        return { success: true, data: legacy.data as Campaign }
+      }
       console.error(`Error fetching campaign with id ${id}:`, error)
       return { success: false, error: error.message }
     }
@@ -107,6 +154,8 @@ export async function createCampaign(data: {
   slug: string
   description?: string
   theme?: CampaignTheme
+  access_username?: string
+  access_password?: string
 }) {
   const supabase = await createClient()
   
@@ -115,17 +164,38 @@ export async function createCampaign(data: {
     return { success: false, error: "Unauthorized" }
   }
 
-  const { data: campaign, error } = await supabase
-    .from("campaigns")
-    .insert({
-      name: data.name,
-      slug: data.slug,
-      description: data.description,
-      theme: data.theme || {},
-      created_by: user.id
-    })
-    .select()
-    .single()
+  const insertPayload: any = {
+    name: data.name,
+    slug: data.slug,
+    description: data.description,
+    theme: data.theme || {},
+    created_by: user.id,
+  }
+  if (data.access_username) insertPayload.access_username = data.access_username
+  if (data.access_password) insertPayload.access_password = data.access_password
+
+  let campaign: any | null = null
+  let error: any | null = null
+  {
+    const res = await supabase
+      .from("campaigns")
+      .insert(insertPayload)
+      .select("id, name, slug, description, theme, is_active, access_username, created_at")
+      .single()
+    campaign = res.data
+    error = res.error
+  }
+  if (error && isMissingAccessColumnsError(error)) {
+    delete insertPayload.access_username
+    delete insertPayload.access_password
+    const res = await supabase
+      .from("campaigns")
+      .insert(insertPayload)
+      .select("id, name, slug, description, theme, is_active, created_at")
+      .single()
+    campaign = res.data
+    error = res.error
+  }
 
   if (error) {
     console.error("Error creating campaign:", error)
@@ -142,18 +212,40 @@ export async function updateCampaign(id: string, data: Partial<{
   description: string
   theme: CampaignTheme
   is_active: boolean
+  access_username: string
+  access_password: string
 }>) {
   const supabase = await createClient()
   
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: "Unauthorized" }
 
-  const { data: updated, error } = await supabase
-    .from("campaigns")
-    .update(data)
-    .eq("id", id)
-    .select()
-    .single()
+  let updated: any | null = null
+  let error: any | null = null
+  {
+    const res = await supabase
+      .from("campaigns")
+      .update(data)
+      .eq("id", id)
+      .select("id, name, slug, description, theme, is_active, access_username, created_at")
+      .single()
+    updated = res.data
+    error = res.error
+  }
+  if (error && isMissingAccessColumnsError(error)) {
+    const legacyData: any = { ...data }
+    delete legacyData.access_username
+    delete legacyData.access_password
+
+    const res = await supabase
+      .from("campaigns")
+      .update(legacyData)
+      .eq("id", id)
+      .select("id, name, slug, description, theme, is_active, created_at")
+      .single()
+    updated = res.data
+    error = res.error
+  }
 
   if (error) {
     console.error("Error updating campaign:", error)
@@ -162,6 +254,65 @@ export async function updateCampaign(id: string, data: Partial<{
 
   revalidatePath("/admin/dashboard")
   return { success: true, data: updated as Campaign }
+}
+
+const CAMPAIGN_ACCESS_COOKIE = "spin_campaign_access"
+
+export async function loginCampaignAccess(slug: string, username: string, password: string) {
+  try {
+    const supabase = createServiceClient()
+
+    const { data: campaign, error } = await supabase
+      .from("campaigns")
+      .select("id, name, slug, is_active")
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .eq("access_username", username)
+      .eq("access_password", password)
+      .single()
+
+    if (error) {
+      if (isMissingAccessColumnsError(error)) {
+        return { success: false as const, error: "Accès campagne non configuré" }
+      }
+      return { success: false as const, error: "Identifiants incorrects" }
+    }
+    if (!campaign) {
+      return { success: false as const, error: "Identifiants incorrects" }
+    }
+
+    ;(await cookies()).set(
+      CAMPAIGN_ACCESS_COOKIE,
+      JSON.stringify({ id: campaign.id, slug: campaign.slug, name: campaign.name }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      },
+    )
+
+    return { success: true as const, campaign: { id: campaign.id, slug: campaign.slug, name: campaign.name } }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    return { success: false as const, error: msg }
+  }
+}
+
+export async function getCurrentCampaignAccess() {
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get(CAMPAIGN_ACCESS_COOKIE)
+  if (!cookie) return null
+  try {
+    return JSON.parse(cookie.value) as { id: string; slug: string; name: string }
+  } catch {
+    return null
+  }
+}
+
+export async function logoutCampaignAccess() {
+  ;(await cookies()).delete(CAMPAIGN_ACCESS_COOKIE)
+  return { success: true as const }
 }
 
 export async function deleteCampaign(id: string) {
@@ -200,7 +351,17 @@ export async function getCampaignGifts(campaignId: string) {
     return { success: false, error: error.message }
   }
 
-  return { success: true, data: data as Gift[] }
+  const gifts = (data || []) as Gift[]
+  const totalsRes = await getGiftGlobalTotalsFromVenueLimits(gifts.map((g) => g.id))
+  const totals = totalsRes.success ? totalsRes.data : new Map<string, number>()
+
+  return {
+    success: true,
+    data: gifts.map((g) => ({
+      ...g,
+      venue_total_max_winners: totals.get(g.id) || 0,
+    })) as Gift[],
+  }
 }
 
 export async function createCampaignGift(campaignId: string, gift: {
@@ -328,7 +489,7 @@ export async function deleteCampaignGift(giftId: string) {
 
 // --- Public / Spin Logic ---
 
-export async function getAvailablePrizes(campaignId: string, cityId?: string, cityName?: string) {
+export async function getAvailablePrizes(campaignId: string, cityId?: string, cityName?: string, venueId?: string) {
   const supabase = createServiceClient() // Use service client to ensure we can read all limits/participants for counting
 
   // 1. Get all gifts for campaign
@@ -342,74 +503,64 @@ export async function getAvailablePrizes(campaignId: string, cityId?: string, ci
     return { success: false, error: "No gifts found" }
   }
 
-  // Try to resolve cityId from cityName if missing
-  if (!cityId && cityName) {
-     const { data: cityRows } = await supabase
-        .from("cities")
-        .select("id")
-        .ilike("name", cityName)
-        .limit(1)
-     if (cityRows && cityRows.length > 0) {
-        cityId = cityRows[0].id
-     }
+  const totalsRes = await getGiftGlobalTotalsFromVenueLimits((gifts as any[]).map((g) => g.id))
+  const venueTotals = totalsRes.success ? totalsRes.data : new Map<string, number>()
+
+  // Venue limits (stock per restau/bar)
+  const venueLimitsMap = new Map<string, number>()
+  const venueWinnerCounts = new Map<string, number>()
+  if (venueId) {
+    const { data: venueLimits } = await supabase
+      .from("gift_venue_limits")
+      .select("gift_id, max_winners")
+      .eq("venue_id", venueId)
+      .in(
+        "gift_id",
+        (gifts as any[]).map((g) => g.id),
+      )
+
+    const { data: venueWinners } = await supabase
+      .from("participants")
+      .select("prize_id")
+      .eq("campaign_id", campaignId)
+      .eq("venue_id", venueId)
+      .eq("won", true)
+      .not("prize_id", "is", null)
+
+    venueLimits?.forEach((l) => venueLimitsMap.set(l.gift_id, l.max_winners))
+    venueWinners?.forEach((w) => {
+      if (w.prize_id) {
+        venueWinnerCounts.set(w.prize_id, (venueWinnerCounts.get(w.prize_id) || 0) + 1)
+      }
+    })
   }
-
-  // If no city info, just return global availability
-  if (!cityId || !cityName) {
-    const availableGifts = gifts.map(g => ({
-      ...g,
-      available: g.current_winners < g.max_winners
-    }))
-    return { success: true, data: availableGifts }
-  }
-
-  // 2. Fetch specific limits for this city
-  const { data: cityLimits } = await supabase
-    .from("gift_city_limits")
-    .select("gift_id, max_winners")
-    .eq("city_id", cityId)
-    .in("gift_id", gifts.map(g => g.id))
-
-  // 3. Fetch win counts for this city (for the relevant gifts)
-  // We can't easily group-by in client, so we fetch winners. 
-  // Optimization: Only fetch winners for this campaign and city.
-  const { data: winners } = await supabase
-    .from("participants")
-    .select("prize_id")
-    .eq("campaign_id", campaignId)
-    .ilike("city", cityName)
-    .eq("won", true)
-    .not("prize_id", "is", null)
-
-  // Map limits
-  const limitsMap = new Map<string, number>()
-  cityLimits?.forEach(l => limitsMap.set(l.gift_id, l.max_winners))
-
-  // Count winners
-  const winnerCounts = new Map<string, number>()
-  winners?.forEach(w => {
-    if (w.prize_id) {
-        winnerCounts.set(w.prize_id, (winnerCounts.get(w.prize_id) || 0) + 1)
-    }
-  })
 
   // 4. Determine availability
   const availableGifts = gifts.map(gift => {
-    const globalAvailable = gift.current_winners < gift.max_winners
+    const venueTotal = venueTotals.get(gift.id) || 0
+    const effectiveGlobalTotal = venueTotal > 0 ? venueTotal : gift.max_winners
+    const globalAvailable = effectiveGlobalTotal === 0 || gift.current_winners < effectiveGlobalTotal
     
-    // City Limit Check
-    let cityAvailable = true
-    const cityLimit = limitsMap.get(gift.id)
-    if (cityLimit !== undefined) {
-      const cityCount = winnerCounts.get(gift.id) || 0
-      if (cityCount >= cityLimit) {
-        cityAvailable = false
+    // Venue Limit Check
+    let venueAvailable = true
+    if (venueId) {
+      const venueLimit = venueLimitsMap.get(gift.id)
+      if (venueLimit === undefined) {
+        venueAvailable = false
+      } else {
+        const venueCount = venueWinnerCounts.get(gift.id) || 0
+        if (venueCount >= venueLimit) {
+          venueAvailable = false
+        } else {
+          venueAvailable = true
+        }
       }
     }
 
     return {
       ...gift,
-      available: globalAvailable && cityAvailable
+      venue_total_max_winners: venueTotal,
+      available: globalAvailable && venueAvailable
     }
   })
 

@@ -4,7 +4,17 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { getCurrentCity } from "@/app/actions/city-auth"
 // import { getAvailablePrizes } from "@/app/actions/campaigns"
 
-export async function submitParticipation(name: string, code: string, city: string, campaignId?: string) {
+export async function submitParticipation(
+  name: string,
+  code: string,
+  city: string,
+  campaignId?: string,
+  meta?: {
+    city_id?: string
+    venue_id?: string
+    venue_type?: string
+  },
+) {
   try {
     const supabase = createServiceClient()
 
@@ -51,11 +61,22 @@ export async function submitParticipation(name: string, code: string, city: stri
       insertData.campaign_id = campaignId
     }
 
-    const { data, error: insertError } = await supabase
-      .from("participants")
-      .insert(insertData)
-      .select()
-      .single()
+    const insertPayload = meta ? { ...insertData, ...meta } : insertData
+
+    let data: any | null = null
+    let insertError: any | null = null
+
+    {
+      const res = await supabase.from("participants").insert(insertPayload).select().single()
+      data = res.data
+      insertError = res.error
+    }
+
+    if (insertError && meta && typeof insertError.message === "string" && insertError.message.includes("does not exist")) {
+      const res = await supabase.from("participants").insert(insertData).select().single()
+      data = res.data
+      insertError = res.error
+    }
 
     if (insertError) {
       console.error("[v0] Insert error:", insertError)

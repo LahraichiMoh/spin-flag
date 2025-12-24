@@ -134,24 +134,23 @@ export function SpinnerWheel({
     }
   }, [spinError])
 
-  if (typeof window !== "undefined") {
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
     const calcSize = () => {
       const vw = window.innerWidth
       const vh = window.innerHeight
-      // Adjust size calculation for responsiveness, especially for split screen on tablet/desktop
-      const isSplitLayout = vw >= 768
+      const isSplitLayout = vw >= 1024
       const availableWidth = isSplitLayout ? vw * 0.5 : vw
       const base = Math.min(availableWidth, vh) * 0.8
-      // Clamp size: min 280px, max 450px (reduced from 500 for "a little smaller")
-      const clamped = Math.max(280, Math.min(450, Math.floor(base)))
+      const clamped = Math.max(280, Math.min(480, Math.floor(base)))
       setWheelSize(clamped)
     }
-    if ((window as any).__wheelResizeBound !== true) {
-      calcSize()
-      window.addEventListener("resize", calcSize)
-      ;(window as any).__wheelResizeBound = true
-    }
-  }
+
+    calcSize()
+    window.addEventListener("resize", calcSize)
+    return () => window.removeEventListener("resize", calcSize)
+  }, [])
 
   const borderColor = "border-white"
   const fallbackColors =
@@ -208,7 +207,7 @@ export function SpinnerWheel({
               const radialShade = `radial-gradient(circle at 50% 50%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.03) 60%)`
               return (
                 <div
-                  className={`relative rounded-full border ${borderColor} shadow-2xl overflow-hidden transform transition-transform duration-3000`}
+                  className={`relative rounded-full border ${borderColor} shadow-2xl overflow-hidden transform transition-transform duration-[3000ms]`}
                   style={{
                     transform: `rotate(${rotation}deg)`,
                     backgroundImage: `${gradient}, ${separators}, ${radialShade}`,
@@ -236,11 +235,11 @@ export function SpinnerWheel({
                           <img
                             src={prize.imageUrl}
                             alt={prize.name}
-                            className="w-12 h-12 md:w-18 md:h-18 object-contain drop-shadow-md"
+                            className="w-12 h-12 md:w-[72px] md:h-[72px] object-contain drop-shadow-md"
                           />
                         ) : (
                           <span
-                            className="text-center max-w-30 md:max-w-32"
+                            className="text-center max-w-[120px] md:max-w-[128px]"
                             style={theme === "gold" ? { writingMode: "sideways-lr" } : undefined}
                           >
                             {prize.name}
@@ -260,7 +259,7 @@ export function SpinnerWheel({
               style={{ width: wheelSize, height: wheelSize, borderWidth: 1 }}
             >
               <p className="font-semibold text-neutral-600">
-                {prizes.length === 0 ? "Aucune récompense configurée." : "Toutes les récompenses ont été distribuées."}
+                {prizes.length === 0 ? "Aucune récompense configurée." : "Merci pour votre participation, vous avez atteint le nombre de cadeaux pour la soirée. Très bonne fin de soirée "}
               </p>
             </div>
           )}
@@ -281,7 +280,7 @@ export function SpinnerWheel({
         <Button
           onClick={handleSpin}
           disabled={isSpinning || hasSpun || !hasAvailablePrizes}
-          className={`px-18 py-10 border-4 border-white text-2xl font-bold rounded-full shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
+          className={`px-[72px] py-10 border-4 border-white text-2xl font-bold rounded-full shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
             isSpinning ? "opacity-50 cursor-not-allowed" : ""
           } ${!customColors?.primary ? buttonClasses : ""}`}
           style={

@@ -129,7 +129,8 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
     .filter(
       (p) =>
         (p.name.toLowerCase().includes(participantQuery.toLowerCase()) ||
-          p.code.toLowerCase().includes(participantQuery.toLowerCase())) &&
+          p.code.toLowerCase().includes(participantQuery.toLowerCase()) ||
+          (p.city || "").toLowerCase().includes(participantQuery.toLowerCase())) &&
         (!winnersOnly || p.won),
     )
     .sort((a, b) =>
@@ -253,7 +254,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
             {/* Desktop View */}
             <div className="hidden sm:block overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="max-h-[65vh] overflow-auto">
-                <table className="min-w-[920px] w-full text-sm">
+                <table className="min-w-[1020px] w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-gray-200">
                     <tr className="text-xs font-semibold text-slate-600">
                       <th className="px-4 py-3 text-left">Nom</th>
