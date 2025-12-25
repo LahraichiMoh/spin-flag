@@ -65,13 +65,15 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
     loadGifts()
   }, [campaignId])
 
-  const loadGifts = async () => {
-    setLoading(true)
+  const loadGifts = async (options?: { showLoader?: boolean }) => {
+    const showLoader = options?.showLoader ?? true
+    if (showLoader) setLoading(true)
     const res = await getCampaignGifts(campaignId)
     if (res.success && res.data) {
       setGifts(res.data)
     }
-    setLoading(false)
+    if (showLoader) setLoading(false)
+    return res
   }
 
   const handleUpload = async (file: File, isEdit = false) => {
@@ -160,10 +162,11 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
     if (!resetGiftId) return
     
     const res = await resetGiftWinners(resetGiftId)
-    if (res.success && res.data) {
-      setGifts(gifts.map(g => g.id === resetGiftId ? res.data! : g))
-      if (editingGift?.id === resetGiftId) {
-          setEditingGift(res.data)
+    if (res.success) {
+      const refreshed = await loadGifts({ showLoader: false })
+      if (refreshed?.success && refreshed.data && editingGift?.id === resetGiftId) {
+        const updated = refreshed.data.find((g) => g.id === resetGiftId) || null
+        setEditingGift(updated)
       }
       toast.success("Compteur réinitialisé !")
     } else {
@@ -179,9 +182,8 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   const performResetAllGifts = async () => {
     setResettingAll(true)
     const res = await resetAllCampaignGifts(campaignId)
-    if (res.success && res.data) {
-      const updatedMap = new Map(res.data.map(g => [g.id, g]))
-      setGifts(prev => prev.map(g => updatedMap.get(g.id) || g))
+    if (res.success) {
+      await loadGifts({ showLoader: false })
       toast.success("Tous les compteurs ont été réinitialisés !")
     } else {
       toast.error("Erreur lors de la réinitialisation: " + res.error)

@@ -62,6 +62,28 @@ export async function getGiftGlobalTotalsFromVenueLimits(giftIds: string[]) {
   return { success: true as const, data: totals }
 }
 
+export async function getGiftGlobalTotalsFromCityLimits(giftIds: string[]) {
+  const supabase = createServiceClient()
+  if (giftIds.length === 0) return { success: true as const, data: new Map<string, number>() }
+
+  const { data, error } = await supabase
+    .from("gift_city_limits")
+    .select("gift_id, max_winners")
+    .in("gift_id", giftIds)
+
+  if (error) {
+    return { success: false as const, error: error.message }
+  }
+
+  const totals = new Map<string, number>()
+  ;(data || []).forEach((row: any) => {
+    const giftId = String(row.gift_id)
+    const prev = totals.get(giftId) || 0
+    totals.set(giftId, prev + (Number(row.max_winners) || 0))
+  })
+  return { success: true as const, data: totals }
+}
+
 async function requireAdmin() {
   const supabase = await createClient()
   const {

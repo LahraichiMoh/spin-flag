@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { getGiftGlobalTotalsFromVenueLimits } from "@/app/actions/gift-limits"
+import { getGiftGlobalTotalsFromCityLimits, getGiftGlobalTotalsFromVenueLimits } from "@/app/actions/gift-limits"
 
 export type CampaignTheme = {
   primaryColor?: string
@@ -352,14 +352,19 @@ export async function getCampaignGifts(campaignId: string) {
   }
 
   const gifts = (data || []) as Gift[]
-  const totalsRes = await getGiftGlobalTotalsFromVenueLimits(gifts.map((g) => g.id))
-  const totals = totalsRes.success ? totalsRes.data : new Map<string, number>()
+  const giftIds = gifts.map((g) => g.id)
+  const [venueTotalsRes, cityTotalsRes] = await Promise.all([
+    getGiftGlobalTotalsFromVenueLimits(giftIds),
+    getGiftGlobalTotalsFromCityLimits(giftIds),
+  ])
+  const venueTotals = venueTotalsRes.success ? venueTotalsRes.data : new Map<string, number>()
+  const cityTotals = cityTotalsRes.success ? cityTotalsRes.data : new Map<string, number>()
 
   return {
     success: true,
     data: gifts.map((g) => ({
       ...g,
-      venue_total_max_winners: totals.get(g.id) || 0,
+      venue_total_max_winners: (cityTotals.get(g.id) || 0) > 0 ? cityTotals.get(g.id) || 0 : venueTotals.get(g.id) || 0,
     })) as Gift[],
   }
 }
