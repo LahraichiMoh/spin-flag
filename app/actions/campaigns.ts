@@ -433,11 +433,20 @@ export async function updateCampaignGift(giftId: string, updates: {
 
 export async function resetGiftWinners(giftId: string) {
   const supabase = await createClient()
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: "Unauthorized" }
 
-  const { error: resetParticipantsError } = await supabase
+  const { data: adminRow, error: adminError } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle()
+  if (adminError || !adminRow) return { success: false, error: "Unauthorized" }
+
+  const service = createServiceClient()
+
+  const { error: resetParticipantsError } = await service
     .from("participants")
     .update({ won: false, prize_id: null })
     .eq("prize_id", giftId)
@@ -448,7 +457,7 @@ export async function resetGiftWinners(giftId: string) {
     return { success: false, error: resetParticipantsError.message }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("gifts")
     .update({ current_winners: 0 })
     .eq("id", giftId)
@@ -470,7 +479,16 @@ export async function resetAllCampaignGifts(campaignId: string) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: "Unauthorized" }
 
-  const { error: resetParticipantsError } = await supabase
+  const { data: adminRow, error: adminError } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle()
+  if (adminError || !adminRow) return { success: false, error: "Unauthorized" }
+
+  const service = createServiceClient()
+
+  const { error: resetParticipantsError } = await service
     .from("participants")
     .update({ won: false, prize_id: null })
     .eq("campaign_id", campaignId)
@@ -481,7 +499,7 @@ export async function resetAllCampaignGifts(campaignId: string) {
     return { success: false, error: resetParticipantsError.message }
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from("gifts")
     .update({ current_winners: 0 })
     .eq("campaign_id", campaignId)

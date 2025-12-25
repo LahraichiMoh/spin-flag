@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, type Campaign, type CampaignTheme } from "@/app/actions/campaigns"
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, resetAllCampaignGifts, type Campaign, type CampaignTheme } from "@/app/actions/campaigns"
 import { CampaignGiftManager } from "@/components/campaign-gift-manager"
 import { ParticipantList } from "@/components/participant-list"
 import { createClient } from "@/lib/supabase/client"
@@ -65,6 +65,8 @@ export function CampaignManager() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBg, setUploadingBg] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [confirmResetAll, setConfirmResetAll] = useState(false)
+  const [resettingAll, setResettingAll] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const bgInputRef = useRef<HTMLInputElement>(null)
 
@@ -161,6 +163,23 @@ export function CampaignManager() {
     setDeleteId(null)
   }
 
+  const handleResetAll = () => {
+    setConfirmResetAll(true)
+  }
+
+  const performResetAll = async () => {
+    if (!editingCampaign || resettingAll) return
+    setResettingAll(true)
+    const res = await resetAllCampaignGifts(editingCampaign.id)
+    if (res.success) {
+      toast.success("Compteurs réinitialisés. Vous pouvez rejouer avec le même stock.")
+    } else {
+      toast.error("Erreur: " + (res.error || "Impossible de réinitialiser"))
+    }
+    setResettingAll(false)
+    setConfirmResetAll(false)
+  }
+
   const handleSave = async () => {
     const theme: CampaignTheme = {
       primaryColor: formData.primaryColor,
@@ -227,9 +246,20 @@ export function CampaignManager() {
   if (editingCampaign) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => setEditingCampaign(null)}>← Retour</Button>
-          <h2 className="text-2xl font-bold">{editingCampaign.name}</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => setEditingCampaign(null)}>← Retour</Button>
+            <h2 className="text-2xl font-bold">{editingCampaign.name}</h2>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleResetAll}
+            disabled={resettingAll}
+            className="border-amber-200 text-amber-800 hover:bg-amber-50"
+          >
+            {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Réinitialiser pour rejouer
+          </Button>
         </div>
 
         <Tabs defaultValue="settings">
@@ -574,6 +604,24 @@ export function CampaignManager() {
             <ParticipantList campaignId={editingCampaign.id} />
           </TabsContent>
         </Tabs>
+
+        <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
+          <AlertDialogContent className="bg-white dark:bg-slate-900">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Réinitialiser pour rejouer ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cela remet à zéro les compteurs de gagnants de la campagne, sans modifier le stock configuré.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={resettingAll}>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={performResetAll} disabled={resettingAll}>
+                {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Réinitialiser
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     )
   }

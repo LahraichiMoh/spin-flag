@@ -130,6 +130,31 @@ export default function SpinPage() {
     if (!participant) return
 
     const supabase = createClient()
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
+    let refreshInFlight = false
+
+    const refreshPrizesFromServer = async () => {
+      if (refreshInFlight) return
+      refreshInFlight = true
+      try {
+        const spinData = await getSpinData(participantId)
+        if (spinData.success && spinData.data) {
+          setPrizes((spinData.data.prizes as any) || [])
+          setCampaign(spinData.data.campaign as any)
+          setCityId(spinData.data.cityId)
+        }
+      } finally {
+        refreshInFlight = false
+      }
+    }
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        refreshPrizesFromServer()
+      }, 250)
+    }
+
     const channel = supabase
       .channel("gifts-realtime")
       .on(
@@ -145,6 +170,7 @@ export default function SpinPage() {
             if (prev.find((p) => p.id === newGift.id)) return prev
             return [...prev, newGift]
           })
+          scheduleRefresh()
         }
       )
       .on(
@@ -153,6 +179,7 @@ export default function SpinPage() {
         (payload) => {
           const updated = payload.new as unknown as Prize
           setPrizes((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+          scheduleRefresh()
         }
       )
       .on(
@@ -161,14 +188,16 @@ export default function SpinPage() {
         (payload) => {
           const oldId = (payload.old as { id: string }).id
           setPrizes((prev) => prev.filter((p) => p.id !== oldId))
+          scheduleRefresh()
         }
       )
       .subscribe()
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
       supabase.removeChannel(channel)
     }
-  }, [participant])
+  }, [participant, participantId])
 
   const handleSpinComplete = async (selectedPrizeId: string) => {
     try {
