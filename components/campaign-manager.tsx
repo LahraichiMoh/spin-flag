@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -54,6 +55,7 @@ export function CampaignManager() {
     description: "",
     accessUsername: "",
     accessPassword: "",
+    isActive: true,
     primaryColor: "#7f1d1d",
     secondaryColor: "#facc15",
     logoUrl: "",
@@ -134,6 +136,7 @@ export function CampaignManager() {
       description: campaign.description || "",
       accessUsername: campaign.access_username || "",
       accessPassword: "",
+      isActive: campaign.is_active !== false,
       primaryColor: campaign.theme.primaryColor || "#7f1d1d",
       secondaryColor: campaign.theme.secondaryColor || "#facc15",
       logoUrl: campaign.theme.logoUrl || "",
@@ -172,6 +175,7 @@ export function CampaignManager() {
         slug: formData.slug,
         description: formData.description,
         theme,
+        is_active: formData.isActive,
         access_username: formData.accessUsername,
       }
       if (formData.accessPassword.trim()) {
@@ -192,6 +196,7 @@ export function CampaignManager() {
         slug: formData.slug,
         description: formData.description,
         theme,
+        is_active: formData.isActive,
         access_username: formData.accessUsername,
         access_password: formData.accessPassword,
       })
@@ -204,6 +209,7 @@ export function CampaignManager() {
             description: "",
             accessUsername: "",
             accessPassword: "",
+            isActive: true,
             primaryColor: "#7f1d1d",
             secondaryColor: "#facc15",
             logoUrl: "",
@@ -280,6 +286,14 @@ export function CampaignManager() {
                     <div className="space-y-2">
                         <Label>Mot de passe (Campagne)</Label>
                         <Input type="password" value={formData.accessPassword} onChange={e => setFormData({...formData, accessPassword: e.target.value})} placeholder="••••••••" />
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2 pt-2">
+                        <Checkbox
+                          id="campaign-active-edit"
+                          checked={formData.isActive}
+                          onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked === true })}
+                        />
+                        <Label htmlFor="campaign-active-edit">Campagne active (visible sur la page d&apos;accueil)</Label>
                     </div>
                 </div>
                 
@@ -608,6 +622,14 @@ export function CampaignManager() {
                 <Label>Mot de passe (Campagne)</Label>
                 <Input type="password" value={formData.accessPassword} onChange={e => setFormData({...formData, accessPassword: e.target.value})} placeholder="••••••••" />
               </div>
+              <div className="col-span-2 flex items-center gap-2 pt-2">
+                <Checkbox
+                  id="campaign-active-create"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked === true })}
+                />
+                <Label htmlFor="campaign-active-create">Campagne active (visible sur la page d&apos;accueil)</Label>
+              </div>
             </div>
 
             <div className="space-y-4 border-t pt-4">
@@ -698,7 +720,7 @@ export function CampaignManager() {
             <div className="h-32 bg-cover bg-center relative" style={{ backgroundImage: `url(${campaign.theme.backgroundUrl || '/placeholder-bg.jpg'})`, backgroundColor: campaign.theme.primaryColor }}>
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
                 {campaign.theme.logoUrl && (
-                    <img src={campaign.theme.logoUrl} className="absolute bottom-[-20px] left-4 w-16 h-16 rounded-full border-4 border-white object-contain bg-white" />
+                    <img src={campaign.theme.logoUrl} alt="" className="absolute bottom-[-20px] left-4 w-16 h-16 rounded-full border-4 border-white object-contain bg-white" />
                 )}
             </div>
             <CardHeader className="pt-8">
@@ -722,8 +744,14 @@ export function CampaignManager() {
                     </Button>
                 </div>
               </CardTitle>
-              <CardDescription className="flex items-center gap-1">
-                <Globe className="h-3 w-3" /> /{campaign.slug}
+              <CardDescription className="flex items-center gap-2">
+                <Globe className="h-3 w-3" />
+                <span>/{campaign.slug}</span>
+                {campaign.is_active === false ? (
+                  <span className="ml-auto rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    Inactive
+                  </span>
+                ) : null}
               </CardDescription>
             </CardHeader>
             <CardContent>

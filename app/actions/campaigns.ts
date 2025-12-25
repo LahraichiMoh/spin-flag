@@ -154,6 +154,7 @@ export async function createCampaign(data: {
   slug: string
   description?: string
   theme?: CampaignTheme
+  is_active?: boolean
   access_username?: string
   access_password?: string
 }) {
@@ -171,6 +172,7 @@ export async function createCampaign(data: {
     theme: data.theme || {},
     created_by: user.id,
   }
+  if (data.is_active === false) insertPayload.is_active = false
   if (data.access_username) insertPayload.access_username = data.access_username
   if (data.access_password) insertPayload.access_password = data.access_password
 
