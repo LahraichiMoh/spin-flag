@@ -79,7 +79,8 @@ export function CampaignManager() {
 
       const { data: venuesData } = await supabase
         .from("venues")
-        .select("id, name, type, stock, city_id, city:cities ( id, name )")
+        .select("id, name, type, stock, city_id, campaign_id, city:cities ( id, name )")
+        .eq("campaign_id", editingCampaign.id)
         .order("name")
       setLocationVenues((venuesData || []) as any)
     }
@@ -431,6 +432,7 @@ export function CampaignManager() {
                         try {
                           const { error: venueError } = await supabase.from("venues").insert({
                             city_id: locationCityId,
+                            campaign_id: editingCampaign.id,
                             name: newVenueName.trim(),
                             type: newVenueType,
                             stock: parseInt(newVenueStock) || 0,
@@ -442,7 +444,8 @@ export function CampaignManager() {
 
                           const { data: venuesData, error: venuesError } = await supabase
                             .from("venues")
-                            .select("id, name, type, stock, city_id, city:cities ( id, name )")
+                            .select("id, name, type, stock, city_id, campaign_id, city:cities ( id, name )")
+                            .eq("campaign_id", editingCampaign.id)
                             .order("name")
                           if (venuesError) {
                             toast.error(venuesError.message || "Erreur lors du chargement des établissements")
@@ -479,7 +482,8 @@ export function CampaignManager() {
                         const supabase = createClient()
                         const { data, error } = await supabase
                           .from("venues")
-                          .select("id, name, type, stock, city_id, city:cities ( id, name )")
+                          .select("id, name, type, stock, city_id, campaign_id, city:cities ( id, name )")
+                          .eq("campaign_id", editingCampaign.id)
                           .order("name")
                         if (error) toast.error(error.message || "Erreur lors du chargement des établissements")
                         setLocationVenues((data || []) as any)
@@ -528,7 +532,11 @@ export function CampaignManager() {
                         onClick={async () => {
                           if (!deleteVenueId) return
                           const supabase = createClient()
-                          const { error } = await supabase.from("venues").delete().eq("id", deleteVenueId)
+                          const { error } = await supabase
+                            .from("venues")
+                            .delete()
+                            .eq("id", deleteVenueId)
+                            .eq("campaign_id", editingCampaign.id)
                           if (error) {
                             toast.error(error.message)
                             setDeleteVenueId(null)

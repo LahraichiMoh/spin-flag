@@ -137,11 +137,12 @@ export async function upsertGiftCityLimit(giftId: string, cityId: string, maxWin
   return { success: true, data }
 }
 
-export async function getVenuesForLimits() {
+export async function getVenuesForLimits(campaignId: string) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from("venues")
     .select("id, name, type, city:cities ( name )")
+    .eq("campaign_id", campaignId)
     .order("name")
 
   if (error) {

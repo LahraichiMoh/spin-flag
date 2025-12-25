@@ -435,6 +435,17 @@ export async function resetGiftWinners(giftId: string) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: "Unauthorized" }
 
+  const { error: resetParticipantsError } = await supabase
+    .from("participants")
+    .update({ won: false, prize_id: null })
+    .eq("prize_id", giftId)
+    .eq("won", true)
+
+  if (resetParticipantsError) {
+    console.error("Error resetting participants for gift:", resetParticipantsError)
+    return { success: false, error: resetParticipantsError.message }
+  }
+
   const { data, error } = await supabase
     .from("gifts")
     .update({ current_winners: 0 })
@@ -456,6 +467,17 @@ export async function resetAllCampaignGifts(campaignId: string) {
   
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: "Unauthorized" }
+
+  const { error: resetParticipantsError } = await supabase
+    .from("participants")
+    .update({ won: false, prize_id: null })
+    .eq("campaign_id", campaignId)
+    .eq("won", true)
+  
+  if (resetParticipantsError) {
+    console.error("Error resetting participants for campaign:", resetParticipantsError)
+    return { success: false, error: resetParticipantsError.message }
+  }
   
   const { data, error } = await supabase
     .from("gifts")

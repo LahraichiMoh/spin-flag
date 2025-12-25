@@ -20,12 +20,13 @@ import { toast } from "sonner"
 interface GiftLimitManagerProps {
   giftId: string
   giftName: string
+  campaignId?: string
   scope?: "city" | "venue"
   onClose?: () => void
   onLimitUpdated?: () => void
 }
 
-export function GiftLimitManager({ giftId, giftName, scope = "city", onClose, onLimitUpdated }: GiftLimitManagerProps) {
+export function GiftLimitManager({ giftId, giftName, campaignId, scope = "city", onClose, onLimitUpdated }: GiftLimitManagerProps) {
   const [cities, setCities] = useState<City[]>([])
   const [venues, setVenues] = useState<VenueForLimit[]>([])
   const [limits, setLimits] = useState<Record<string, number>>({})
@@ -35,12 +36,19 @@ export function GiftLimitManager({ giftId, giftName, scope = "city", onClose, on
 
   useEffect(() => {
     loadData()
-  }, [giftId])
+  }, [giftId, scope, campaignId])
 
   const loadData = async () => {
     setLoading(true)
     if (scope === "venue") {
-      const [venuesRes, limitsRes] = await Promise.all([getVenuesForLimits(), getGiftVenueLimits(giftId)])
+      if (!campaignId) {
+        setVenues([])
+        setLimits({})
+        setLoading(false)
+        return
+      }
+
+      const [venuesRes, limitsRes] = await Promise.all([getVenuesForLimits(campaignId), getGiftVenueLimits(giftId)])
 
       const venueRows = venuesRes.success && venuesRes.data ? venuesRes.data : []
       setVenues(venueRows)

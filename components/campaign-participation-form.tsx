@@ -85,6 +85,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
           .from("venues")
           .select("id, name, type")
           .eq("city_id", cityId)
+          .eq("campaign_id", campaignId)
           .order("name")
 
         if (venuesError) throw venuesError

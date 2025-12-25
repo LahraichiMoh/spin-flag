@@ -382,7 +382,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
-                    <GiftLimitManager giftId={gift.id} giftName={gift.name} scope="venue" onLimitUpdated={loadGifts} />
+                    <GiftLimitManager campaignId={campaignId} giftId={gift.id} giftName={gift.name} scope="venue" onLimitUpdated={loadGifts} />
                   </DialogContent>
                 </Dialog>
                 
