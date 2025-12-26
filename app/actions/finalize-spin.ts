@@ -44,6 +44,17 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
       return { success: false, error: "Already spun" }
     }
 
+    let replayStartedAt: string | undefined = undefined
+    if (participantRow.campaign_id) {
+      const { data: campaignRow } = await supabase
+        .from("campaigns")
+        .select("theme")
+        .eq("id", participantRow.campaign_id)
+        .maybeSingle()
+      const raw = (campaignRow as any)?.theme?.replayStartedAt as string | undefined
+      replayStartedAt = raw && Number.isFinite(Date.parse(raw)) ? raw : undefined
+    }
+
     // Strong guard: verify the selected prize is currently available for this campaign/city
     if (participantRow.campaign_id) {
       const availability = await getAvailablePrizes(participantRow.campaign_id, effectiveCityId, effectiveCityName, effectiveVenueId)
@@ -126,13 +137,19 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
         isEligible = false
         limitError = "Stock non configuré pour cet établissement."
       } else {
-        const { count, error: countError } = await supabase
+        let countQuery = supabase
           .from("participants")
           .select("*", { count: "exact", head: true })
           .eq("campaign_id", participantRow.campaign_id)
           .eq("venue_id", effectiveVenueId)
           .eq("prize_id", selectedPrizeId)
           .eq("won", true)
+
+        if (replayStartedAt) {
+          countQuery = countQuery.gte("created_at", replayStartedAt)
+        }
+
+        const { count, error: countError } = await countQuery
 
         if (!countError && count !== null && count >= venueLimitRow.max_winners) {
           isEligible = false
@@ -199,7 +216,7 @@ export async function getSpinData(participantId: string) {
 
     const { data: participant, error: participantError } = await supabase
       .from("participants")
-      .select("id, name, code, city, city_id, venue_id, venue_type, won, prize_id, campaign_id")
+      .select("id, name, code, city, city_id, venue_id, venue_type, won, prize_id, campaign_id, agreed_to_terms, created_at")
       .eq("id", participantId)
       .single()
 

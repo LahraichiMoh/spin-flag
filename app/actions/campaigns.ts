@@ -12,6 +12,7 @@ export type CampaignTheme = {
   logoUrl?: string
   backgroundUrl?: string
   fontFamily?: string
+  replayStartedAt?: string
 }
 
 export type Campaign = {
@@ -488,15 +489,31 @@ export async function resetAllCampaignGifts(campaignId: string) {
 
   const service = createServiceClient()
 
-  const { error: resetParticipantsError } = await service
-    .from("participants")
-    .update({ won: false, prize_id: null })
-    .eq("campaign_id", campaignId)
-    .eq("won", true)
-  
-  if (resetParticipantsError) {
-    console.error("Error resetting participants for campaign:", resetParticipantsError)
-    return { success: false, error: resetParticipantsError.message }
+  const { data: campaignRow, error: campaignError } = await service
+    .from("campaigns")
+    .select("theme")
+    .eq("id", campaignId)
+    .single()
+
+  if (campaignError) {
+    console.error("Error loading campaign theme:", campaignError)
+    return { success: false, error: campaignError.message }
+  }
+
+  const nowIso = new Date().toISOString()
+  const nextTheme = {
+    ...(((campaignRow as any)?.theme as Record<string, unknown>) || {}),
+    replayStartedAt: nowIso,
+  }
+
+  const { error: updateCampaignError } = await service
+    .from("campaigns")
+    .update({ theme: nextTheme })
+    .eq("id", campaignId)
+
+  if (updateCampaignError) {
+    console.error("Error updating campaign replay start:", updateCampaignError)
+    return { success: false, error: updateCampaignError.message }
   }
   
   const { data, error } = await service
@@ -539,6 +556,16 @@ export async function deleteCampaignGift(giftId: string) {
 export async function getAvailablePrizes(campaignId: string, cityId?: string, cityName?: string, venueId?: string) {
   const supabase = createServiceClient() // Use service client to ensure we can read all limits/participants for counting
 
+  const { data: campaignRow } = await supabase
+    .from("campaigns")
+    .select("theme")
+    .eq("id", campaignId)
+    .maybeSingle()
+
+  const replayStartedAtRaw = (campaignRow as any)?.theme?.replayStartedAt as string | undefined
+  const replayStartedAt =
+    replayStartedAtRaw && Number.isFinite(Date.parse(replayStartedAtRaw)) ? replayStartedAtRaw : undefined
+
   // 1. Get all gifts for campaign
   const { data: gifts, error: giftsError } = await supabase
     .from("gifts")
@@ -566,13 +593,19 @@ export async function getAvailablePrizes(campaignId: string, cityId?: string, ci
         (gifts as any[]).map((g) => g.id),
       )
 
-    const { data: venueWinners } = await supabase
+    let venueWinnersQuery = supabase
       .from("participants")
       .select("prize_id")
       .eq("campaign_id", campaignId)
       .eq("venue_id", venueId)
       .eq("won", true)
       .not("prize_id", "is", null)
+
+    if (replayStartedAt) {
+      venueWinnersQuery = venueWinnersQuery.gte("created_at", replayStartedAt)
+    }
+
+    const { data: venueWinners } = await venueWinnersQuery
 
     venueLimits?.forEach((l) => venueLimitsMap.set(l.gift_id, l.max_winners))
     venueWinners?.forEach((w) => {

@@ -20,6 +20,8 @@ interface Participant {
   won: boolean
   prize_id: string | null
   campaign_id?: string
+  created_at?: string
+  agreed_to_terms?: boolean
 }
 
 interface Prize {
@@ -68,6 +70,7 @@ export default function SpinPage() {
         const spinData = await getSpinData(participantId)
         if (!spinData.success || !spinData.data) throw new Error(spinData.error || "Failed to load spin data")
         const participantData = spinData.data.participant as any
+        const campaignData = spinData.data.campaign as any
         
         if (participantData.won) {
           try {
@@ -109,10 +112,58 @@ export default function SpinPage() {
           }
         }
 
+        const replayStartedAt = campaignData?.theme?.replayStartedAt as string | undefined
+        const participantCreatedAt = participantData.created_at as string | undefined
+        if (replayStartedAt && participantCreatedAt) {
+          const participantTs = new Date(participantCreatedAt).getTime()
+          const replayTs = new Date(replayStartedAt).getTime()
+          if (Number.isFinite(participantTs) && Number.isFinite(replayTs) && participantTs < replayTs) {
+            try {
+              const supabase = createClient()
+              const baseCode = String(participantData.code ?? "").trim()
+              const insertBase: any = {
+                name: participantData.name,
+                code: baseCode,
+                city: participantData.city,
+                city_id: participantData.city_id ?? null,
+                venue_id: participantData.venue_id ?? null,
+                venue_type: participantData.venue_type ?? null,
+                agreed_to_terms: participantData.agreed_to_terms ?? true,
+                won: false,
+                prize_id: null,
+                campaign_id: participantData.campaign_id ?? null,
+              }
+
+              const firstId = crypto.randomUUID()
+              const first = await supabase.from("participants").insert({ ...insertBase, id: firstId })
+              if (!first.error) {
+                router.replace(`/spin/${firstId}`)
+                return
+              }
+
+              const isDup = first.error.code === "23505" || first.error.message?.toLowerCase().includes("duplicate")
+              if (!isDup) throw first.error
+
+              const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
+              const secondId = crypto.randomUUID()
+              const second = await supabase
+                .from("participants")
+                .insert({ ...insertBase, id: secondId, code: `${baseCode}-${suffix}` })
+              if (second.error) throw second.error
+
+              router.replace(`/spin/${secondId}`)
+              return
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
+              setSpinError(msg)
+            }
+          }
+        }
+
         setParticipant(participantData)
         setHasSpun(!!participantData.won)
 
-        setCampaign(spinData.data.campaign as any)
+        setCampaign(campaignData)
         setPrizes((spinData.data.prizes as any) || [])
         setCityId(spinData.data.cityId)
 

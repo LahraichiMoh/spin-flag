@@ -172,7 +172,7 @@ export function CampaignManager() {
     setResettingAll(true)
     const res = await resetAllCampaignGifts(editingCampaign.id)
     if (res.success) {
-      toast.success("Compteurs réinitialisés. Vous pouvez rejouer avec le même stock.")
+      toast.success("Nouvelle session démarrée. Vous pouvez rejouer avec le même stock.")
     } else {
       toast.error("Erreur: " + (res.error || "Impossible de réinitialiser"))
     }
@@ -610,7 +610,7 @@ export function CampaignManager() {
             <AlertDialogHeader>
               <AlertDialogTitle>Réinitialiser pour rejouer ?</AlertDialogTitle>
               <AlertDialogDescription>
-                Cela remet à zéro les compteurs de gagnants de la campagne, sans modifier le stock configuré.
+                Cela démarre une nouvelle session (nouveaux compteurs), sans modifier le stock configuré, et en conservant l’historique des gagnants.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
