@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowUpDown, CalendarDays, Trophy, Users } from "lucide-react"
+import { ArrowUpDown, CalendarDays, Download, Loader2, Trophy, Users } from "lucide-react"
 
 interface Gift {
   id: string
@@ -34,15 +34,33 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   const [prizeMap, setPrizeMap] = useState<{ [key: string]: Gift }>({})
   const [loading, setLoading] = useState(true)
   const [participantQuery, setParticipantQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [sortDesc, setSortDesc] = useState(true)
   const [winnersOnly, setWinnersOnly] = useState(!!onlyWinners)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(25)
+  const [totalParticipants, setTotalParticipants] = useState(0)
+  const [totalWinners, setTotalWinners] = useState(0)
+  const [matchingTotal, setMatchingTotal] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [exportingAll, setExportingAll] = useState(false)
+  const [exportingWinners, setExportingWinners] = useState(false)
 
   useEffect(() => {
     setWinnersOnly(!!onlyWinners)
   }, [onlyWinners])
 
   useEffect(() => {
-    const loadData = async () => {
+    const t = setTimeout(() => setDebouncedQuery(participantQuery.trim()), 250)
+    return () => clearTimeout(t)
+  }, [participantQuery])
+
+  useEffect(() => {
+    setPageIndex(0)
+  }, [debouncedQuery, winnersOnly, campaignId])
+
+  useEffect(() => {
+    const loadGifts = async () => {
       try {
         const supabase = createClient()
 
@@ -59,30 +77,12 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           prizeMapTemp[gift.id] = gift
         })
         setPrizeMap(prizeMapTemp)
-
-        // Get participants
-        let query = supabase
-          .from("participants")
-          .select("*")
-          .order("created_at", { ascending: false })
-
-        if (campaignId) {
-            query = query.eq("campaign_id", campaignId)
-        }
-
-        const { data: participantsData, error: participantsError } = await query
-
-        if (participantsError) throw participantsError
-        setParticipants(participantsData || [])
-
-        setLoading(false)
       } catch (error) {
         console.error("Error loading data:", error)
-        setLoading(false)
       }
     }
 
-    loadData()
+    loadGifts()
   }, [campaignId])
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           // If filtering by campaign, ignore updates from other campaigns
           if (campaignId && row.campaign_id !== campaignId) return
           
-          setParticipants((prev) => [row, ...prev])
+          setReloadKey((v) => v + 1)
         },
       )
       .on(
@@ -108,7 +108,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
            // If filtering by campaign, ignore updates from other campaigns
            if (campaignId && row.campaign_id !== campaignId) return
 
-          setParticipants((prev) => prev.map((p) => (p.id === row.id ? row : p)))
+          setReloadKey((v) => v + 1)
         },
       )
       .on(
@@ -116,7 +116,11 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
         { event: "DELETE", schema: "public", table: "participants" },
         (payload) => {
           const oldId = (payload.old as { id: string }).id
-          setParticipants((prev) => prev.filter((p) => p.id !== oldId))
+          if (campaignId) {
+            setReloadKey((v) => v + 1)
+          } else if (oldId) {
+            setReloadKey((v) => v + 1)
+          }
         },
       )
       .subscribe()
@@ -125,25 +129,155 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
     }
   }, [campaignId])
 
-  const filteredParticipants = participants
-    .filter(
-      (p) =>
-        (p.name.toLowerCase().includes(participantQuery.toLowerCase()) ||
-          p.code.toLowerCase().includes(participantQuery.toLowerCase()) ||
-          (p.city || "").toLowerCase().includes(participantQuery.toLowerCase())) &&
-        (!winnersOnly || p.won),
-    )
-    .sort((a, b) =>
-      sortDesc
-        ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        : new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-    )
+  const pageCount = Math.max(1, Math.ceil(matchingTotal / pageSize))
+  const fromIndex = pageIndex * pageSize
+  const toIndex = Math.min(fromIndex + participants.length, matchingTotal)
+
+  const resultsLabel = useMemo(() => {
+    if (matchingTotal === 0) return "0 résultat"
+    if (matchingTotal === 1) return "1 résultat"
+    return `${matchingTotal} résultats`
+  }, [matchingTotal])
+
+  const exportCsv = async (options: { winnersOnly: boolean }) => {
+    const setExporting = options.winnersOnly ? setExportingWinners : setExportingAll
+    setExporting(true)
+    try {
+      const supabase = createClient()
+
+      let countQuery = supabase
+        .from("participants")
+        .select("*", { count: "exact", head: true })
+      if (campaignId) countQuery = countQuery.eq("campaign_id", campaignId)
+      if (options.winnersOnly) countQuery = countQuery.eq("won", true)
+      const { count, error: countError } = await countQuery
+      if (countError) throw countError
+      const total = count || 0
+
+      const chunkSize = 1000
+      const allRows: any[] = []
+      for (let offset = 0; offset < total; offset += chunkSize) {
+        let query = supabase
+          .from("participants")
+          .select("name, code, city, prize_id, created_at")
+          .order("created_at", { ascending: false })
+          .range(offset, offset + chunkSize - 1)
+
+        if (campaignId) query = query.eq("campaign_id", campaignId)
+        if (options.winnersOnly) query = query.eq("won", true)
+
+        const { data, error } = await query
+        if (error) throw error
+        allRows.push(...(data || []))
+        if (!data || data.length < chunkSize) break
+      }
+
+      const columns = [
+        "name",
+        "code",
+        "city",
+        "prize_name",
+        "created_at",
+      ]
+
+      const escapeCsv = (value: unknown) => {
+        if (value === null || value === undefined) return ""
+        const s = String(value)
+        const needsQuotes = /[",\n\r]/.test(s)
+        const escaped = s.replaceAll('"', '""')
+        return needsQuotes ? `"${escaped}"` : escaped
+      }
+
+      const lines: string[] = []
+      lines.push(columns.join(","))
+      for (const r of allRows) {
+        const prizeId = (r as any).prize_id as string | null | undefined
+        const prizeName = prizeId && prizeMap[prizeId] ? prizeMap[prizeId].name : ""
+        const rowObj = { ...(r as any), prize_name: prizeName }
+        lines.push(columns.map((c) => escapeCsv((rowObj as any)[c])).join(","))
+      }
+
+      const csv = lines.join("\n")
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const date = new Date().toISOString().slice(0, 10)
+      const scope = campaignId ? `campaign-${campaignId}` : "all-campaigns"
+      const subset = options.winnersOnly ? "winners" : "participants"
+      a.download = `${scope}-${subset}-${date}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error("Export CSV failed:", e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  useEffect(() => {
+    const loadCountsAndPage = async () => {
+      setLoading(true)
+      try {
+        const supabase = createClient()
+
+        let totalQuery = supabase
+          .from("participants")
+          .select("*", { count: "exact", head: true })
+        if (campaignId) totalQuery = totalQuery.eq("campaign_id", campaignId)
+        const { count: totalCount, error: totalError } = await totalQuery
+        if (totalError) throw totalError
+        setTotalParticipants(totalCount || 0)
+
+        let winnersQuery = supabase
+          .from("participants")
+          .select("*", { count: "exact", head: true })
+          .eq("won", true)
+        if (campaignId) winnersQuery = winnersQuery.eq("campaign_id", campaignId)
+        const { count: winnersCount, error: winnersError } = await winnersQuery
+        if (winnersError) throw winnersError
+        setTotalWinners(winnersCount || 0)
+
+        let query = supabase
+          .from("participants")
+          .select("*", { count: "exact" })
+          .order("created_at", { ascending: !sortDesc })
+
+        if (campaignId) query = query.eq("campaign_id", campaignId)
+        if (winnersOnly) query = query.eq("won", true)
+        if (debouncedQuery) {
+          const q = debouncedQuery.replaceAll(",", " ")
+          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+        }
+
+        const from = pageIndex * pageSize
+        const to = from + pageSize - 1
+        query = query.range(from, to)
+
+        const { data, count, error } = await query
+        if (error) throw error
+
+        setParticipants((data || []) as Participant[])
+        setMatchingTotal(count || 0)
+      } catch (error) {
+        console.error("Error loading data:", error)
+        setParticipants([])
+        setMatchingTotal(0)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCountsAndPage()
+  }, [campaignId, debouncedQuery, pageIndex, pageSize, reloadKey, sortDesc, winnersOnly])
+
+  const displayedParticipants = participants
 
   if (loading) {
     return <div className="text-center py-8">Chargement...</div>
   }
-
-  const winnerCount = participants.filter((p) => p.won).length
   
   return (
     <div className="space-y-6">
@@ -157,8 +291,18 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                         <div className="rounded-full bg-blue-100 text-blue-700 p-2">
                             <Users className="size-5" />
                         </div>
-                        <p className="text-3xl font-bold text-blue-600">{participants.length}</p>
+                        <p className="text-3xl font-bold text-blue-600">{totalParticipants}</p>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-4 w-full"
+                      disabled={exportingAll || totalParticipants === 0}
+                      onClick={() => exportCsv({ winnersOnly: false })}
+                    >
+                      {exportingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                      Télécharger CSV (tout)
+                    </Button>
                 </CardContent>
             </Card>
             <Card>
@@ -170,8 +314,18 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                         <div className="rounded-full bg-green-100 text-green-700 p-2">
                             <Trophy className="size-5" />
                         </div>
-                        <p className="text-3xl font-bold text-green-600">{winnerCount}</p>
+                        <p className="text-3xl font-bold text-green-600">{totalWinners}</p>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-4 w-full"
+                      disabled={exportingWinners || totalWinners === 0}
+                      onClick={() => exportCsv({ winnersOnly: true })}
+                    >
+                      {exportingWinners ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                      Télécharger CSV (gagnants)
+                    </Button>
                 </CardContent>
             </Card>
         </div>
@@ -179,7 +333,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
         <Card>
             <CardHeader>
             <CardTitle>Liste des participants</CardTitle>
-            <CardDescription>{participants.length} entrées au total</CardDescription>
+            <CardDescription>{totalParticipants} entrées au total</CardDescription>
             </CardHeader>
             <CardContent>
             <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -206,14 +360,12 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                   </Button>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {filteredParticipants.length} résultat{filteredParticipants.length > 1 ? "s" : ""}
-              </div>
+              <div className="text-xs text-muted-foreground">{resultsLabel}</div>
             </div>
             
             {/* Mobile View */}
             <div className="sm:hidden space-y-3">
-                {filteredParticipants.map((p) => (
+                {displayedParticipants.map((p) => (
                 <div key={p.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
                     <div className="flex items-center justify-between">
                     <div className="font-semibold">{p.name}</div>
@@ -265,14 +417,14 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredParticipants.length === 0 ? (
+                    {displayedParticipants.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                           Aucun participant trouvé
                         </td>
                       </tr>
                     ) : (
-                      filteredParticipants.map((row) => {
+                      displayedParticipants.map((row) => {
                         const prize = row.prize_id ? prizeMap[row.prize_id] : null
                         return (
                           <tr key={row.id} className="hover:bg-slate-50">
@@ -317,6 +469,52 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                {matchingTotal === 0 ? (
+                  "Affichage 0 sur 0"
+                ) : (
+                  <>Affichage {fromIndex + 1}–{toIndex} sur {matchingTotal}</>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm w-full sm:w-auto"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value))
+                    setPageIndex(0)
+                  }}
+                >
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                  <option value={200}>200 / page</option>
+                </select>
+                <div className="text-sm text-slate-600 text-center sm:text-left">
+                  Page {Math.min(pageCount, pageIndex + 1)} / {pageCount}
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={pageIndex <= 0}
+                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                  >
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={pageIndex >= pageCount - 1}
+                    onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+                  >
+                    Suivant
+                  </Button>
+                </div>
               </div>
             </div>
             </CardContent>

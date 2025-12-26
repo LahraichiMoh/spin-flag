@@ -213,13 +213,13 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-medium">Cadeaux de la campagne: {campaignName}</h3>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowAddForm(!showAddForm)}>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button className="w-full sm:w-auto" onClick={() => setShowAddForm(!showAddForm)}>
             {showAddForm ? "Annuler" : <><Plus className="mr-2 h-4 w-4" /> Ajouter un cadeau</>}
           </Button>
-          <Button variant="outline" onClick={handleResetAllGifts} disabled={resettingAll}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={handleResetAllGifts} disabled={resettingAll}>
             {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Réinitialiser tous les cadeaux
           </Button>
@@ -341,7 +341,17 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {gifts.map(gift => (
+        {gifts.map((gift) => {
+          const venueTotal = Number(gift.venue_total_max_winners || 0)
+          const effectiveTotal = venueTotal > 0 ? venueTotal : Number(gift.max_winners || 0)
+          const totalLabel =
+            venueTotal > 0 ? venueTotal : gift.max_winners === 0 ? "∞" : gift.max_winners
+          const showProgress = effectiveTotal > 0
+          const progressPct = showProgress
+            ? Math.min(100, Math.max(0, (Number(gift.current_winners || 0) / effectiveTotal) * 100))
+            : 0
+
+          return (
           <Card key={gift.id} className="overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-transparent to-transparent" style={{ backgroundColor: gift.color || '#ccc' }} />
             <CardHeader className="pb-2">
@@ -351,11 +361,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                     <CardTitle className="text-base">{gift.name}</CardTitle>
                     <CardDescription className="text-xs">
                       Stock global:{" "}
-                      {(gift.venue_total_max_winners || 0) > 0
-                        ? gift.venue_total_max_winners
-                        : gift.max_winners === 0
-                          ? "∞"
-                          : gift.max_winners}
+                      {totalLabel}
                     </CardDescription>
                   </div>
                 </div>
@@ -366,13 +372,22 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
             </CardHeader>
             <CardContent className="pt-2 flex flex-col gap-2">
               <div className="text-sm text-slate-500">
-                Utilisés: {gift.current_winners} /{" "}
-                {(gift.venue_total_max_winners || 0) > 0
-                  ? gift.venue_total_max_winners
-                  : gift.max_winners === 0
-                    ? "∞"
-                    : gift.max_winners}
+                Utilisés: {gift.current_winners} / {totalLabel}
               </div>
+              {showProgress && (
+                <div
+                  className="h-2 w-full rounded-full bg-slate-100 overflow-hidden"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={effectiveTotal}
+                  aria-valuenow={Math.min(effectiveTotal, Math.max(0, Number(gift.current_winners || 0)))}
+                >
+                  <div
+                    className="h-full transition-[width] duration-300"
+                    style={{ width: `${progressPct}%`, backgroundColor: gift.color || "#94a3b8" }}
+                  />
+                </div>
+              )}
               
               <div className="flex flex-wrap gap-2 mt-2">
                 <Dialog>
@@ -401,7 +416,8 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
               </div>
             </CardContent>
           </Card>
-        ))}
+          )
+        })}
         
         {gifts.length === 0 && !showAddForm && (
           <div className="col-span-full text-center py-12 text-slate-400 bg-slate-50 rounded-lg border border-dashed">

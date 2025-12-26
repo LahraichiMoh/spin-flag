@@ -246,16 +246,16 @@ export function CampaignManager() {
   if (editingCampaign) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setEditingCampaign(null)}>← Retour</Button>
-            <h2 className="text-2xl font-bold">{editingCampaign.name}</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <Button variant="outline" onClick={() => setEditingCampaign(null)} className="w-full sm:w-auto">← Retour</Button>
+            <h2 className="text-2xl font-bold leading-tight">{editingCampaign.name}</h2>
           </div>
           <Button
             variant="outline"
             onClick={handleResetAll}
             disabled={resettingAll}
-            className="border-amber-200 text-amber-800 hover:bg-amber-50"
+            className="border-amber-200 text-amber-800 hover:bg-amber-50 w-full sm:w-auto"
           >
             {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Réinitialiser pour rejouer
@@ -263,28 +263,28 @@ export function CampaignManager() {
         </div>
 
         <Tabs defaultValue="settings">
-          <TabsList className="inline-flex h-12 items-center gap-1 rounded-xl bg-slate-100 p-1 shadow-sm ring-1 ring-slate-200">
+          <TabsList className="h-12 w-full overflow-x-auto items-center gap-1 rounded-xl bg-slate-100 p-1 shadow-sm ring-1 ring-slate-200 justify-start">
             <TabsTrigger
               value="settings"
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
             >
               <Settings className="mr-2 h-4 w-4" /> Paramètres
             </TabsTrigger>
             <TabsTrigger
               value="gifts"
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
             >
               <GiftIcon className="mr-2 h-4 w-4" /> Cadeaux
             </TabsTrigger>
             <TabsTrigger
               value="venues"
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
             >
               <Globe className="mr-2 h-4 w-4" /> Établissements
             </TabsTrigger>
             <TabsTrigger
               value="participants"
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
             >
               <Users className="mr-2 h-4 w-4" /> Participants
             </TabsTrigger>
