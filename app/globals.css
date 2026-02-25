@@ -132,4 +132,11 @@
   .animate-zoom-in-out {
     animation: zoom-in-out 2.5s ease-in-out infinite;
   }
+  @keyframes shine {
+    from { left: -100% }
+    to { left: 200% }
+  }
+  .animate-shine {
+    animation: shine 1.5s ease-in-out infinite;
+  }
 }

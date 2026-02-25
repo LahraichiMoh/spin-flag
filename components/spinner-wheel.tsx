@@ -279,23 +279,38 @@ export function SpinnerWheel({
         <Button
           onClick={handleSpin}
           disabled={isSpinning || hasSpun || !hasAvailablePrizes}
-          className={`px-[72px] py-10  border-4 border-white text-2xl font-bold  shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
+          className={`relative px-16 py-10 rounded-2xl border-b-4 border-white/30 text-2xl font-bold shadow-2xl transform transition-all hover:scale-105 active:scale-95 active:translate-y-1 flex flex-col items-center leading-tight overflow-hidden group ${
             isSpinning ? "opacity-50 cursor-not-allowed" : ""
           } ${!customColors?.primary ? buttonClasses : ""}`}
-          style={
-            customColors?.primary
+          style={{
+            ...(customColors?.primary
               ? { backgroundColor: customColors.primary, color: "white" }
+              : {}),
+            fontFamily: "fantasy",
+            boxShadow: customColors?.primary 
+              ? `0 10px 0 0 ${customColors.primary}88, 0 15px 30px -10px rgba(0,0,0,0.5)`
               : undefined
-          }
+          }}
         >
+          {/* Modern Glossy Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+          
           {isSpinning ? (
-            "..."
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-2 h-2 bg-white rounded-full animate-bounce" />
+            </div>
           ) : (
-            <>
-              <span className="text-3xl font-black tracking-wide  ">TOURNEZ</span>
-              <span className="text-sm font-medium opacity-90">pour la Gloire!</span>
-            </>
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="text-3xl font-black tracking-tighter drop-shadow-lg mb-0.5">TOURNEZ</span>
+              <span className="text-[12px] font-bold uppercase tracking-[0.2em] drop-shadow-sm">pour la Gloire</span>
+            </div>
           )}
+
+          {/* Shine effect on hover */}
+          <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-40 group-hover:animate-shine pointer-events-none" />
         </Button>
 
         {showWinnerModal && resultPrize && (
@@ -327,7 +342,10 @@ export function SpinnerWheel({
                   <Button 
                     onClick={() => setShowWinnerModal(false)} 
                     className={`mt-6 text-white font-bold ${theme === "gold" ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-900 hover:bg-blue-800"}`}
-                    style={customColors?.primary ? { backgroundColor: customColors.primary } : undefined}
+                    style={{
+                      ...(customColors?.primary ? { backgroundColor: customColors.primary } : {}),
+                      fontFamily: "fantasy",
+                    }}
                   >
                     Fermer
                   </Button>
@@ -364,6 +382,7 @@ export function SpinnerWheel({
                   <Button 
                     onClick={() => window.location.reload()} 
                     className="bg-red-600 hover:bg-red-700 text-white font-bold px-8"
+                    style={{ fontFamily: "fantasy" }}
                   >
                     Réessayer
                   </Button>
