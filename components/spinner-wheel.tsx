@@ -98,13 +98,13 @@ export function SpinnerWheel({
     const targetRotation = baseSpin + pointerAngle - midAngle + jitter
 
     // Schedule decelerating tick sounds over the spin duration
-    const totalTicks = prizes.length * 4
-    const durationMs = 3000
+    const totalTicks = prizes.length * 5
+    const durationMs = 4000
     tickTimersRef.current.forEach((t) => clearTimeout(t))
     tickTimersRef.current = []
     for (let i = 0; i < totalTicks; i++) {
       const t = i / (totalTicks - 1)
-      const easeOut = 1 - Math.pow(1 - t, 2)
+      const easeOut = 1 - Math.pow(1 - t, 3) // Slightly sharper ease out
       const at = Math.floor(easeOut * durationMs)
       const timer = window.setTimeout(() => playTick(), at)
       tickTimersRef.current.push(timer)
@@ -119,7 +119,7 @@ export function SpinnerWheel({
 
       setIsSpinning(false)
       onSpinComplete(selectedPrizeId)
-    }, 3000)
+    }, 4000)
   }
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export function SpinnerWheel({
   const fallbackColors =
     theme === "gold"
       ? ["#A97100", "#B88400", "#C79600", "#D6A800", "#E5BA00", "#F4CC00", "#D0A000", "#BF8E00"]
-      : ["#1B365D", "#C5A572", "#1B365D", "#C5A572", "#1B365D", "#C5A572", "#1B365D", "#C5A572"]
+      : ["#e31d2b", "#fff1a8"]
   const resultAccent =
     theme === "gold"
       ? "from-yellow-50 to-yellow-100 border-yellow-500 text-amber-700"
@@ -170,28 +170,43 @@ export function SpinnerWheel({
 
   return (
     <div className={className}>
-      <div className="flex flex-col items-center space-y-6">
+      <div className="flex flex-col items-center space-y-16">
         <div className="relative">
+          {/* Triangular Pointer - Matches New Reference Image */}
           {pointerSide === "top" && (
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 w-8 h-10">
-              {/* Black Triangle Pointer with White Outline */}
-               <svg
-                width="32"
-                height="40"
-                viewBox="0 0 32 40"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="drop-shadow-lg"
-              >
-                <path
-                  d="M16 40L0 0H32L16 40Z"
-                  fill="black"
-                  stroke="white"
-                  strokeWidth="4"
-                />
-              </svg>
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
+              {/* Triangular Shape using SVG */}
+              <div className="relative w-12 h-12 drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]">
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full"
+                >
+                  <path
+                    d="M24 48L0 0H48L24 48Z"
+                    fill="url(#pointer-gradient)"
+                  />
+                  <defs>
+                    <linearGradient id="pointer-gradient" x1="24" y1="0" x2="24" y2="48" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stopColor="#FFD54F" />
+                      <stop offset="1" stopColor="#FFA000" />
+                    </linearGradient>
+                  </defs>
+                  {/* Subtle top edge highlight */}
+                  <path
+                    d="M2 2H46"
+                    stroke="white"
+                    strokeWidth="1"
+                    strokeOpacity="0.3"
+                  />
+                </svg>
+              </div>
             </div>
           )}
+
           {prizes.length > 0 && hasAvailablePrizes ? (
             (() => {
               const segmentAngle = 360 / prizes.length
@@ -203,52 +218,88 @@ export function SpinnerWheel({
                 stops.push(`${colors[i]} ${start}% ${end}%`)
               }
               const gradient = `conic-gradient(${stops.join(", ")})`
-              const separators = `repeating-conic-gradient(#ffffff55 0deg, #ffffff55 .9deg, transparent .9deg, transparent calc(${360 / prizes.length}deg))`
-              const radialShade = `radial-gradient(circle at 50% 50%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.03) 60%)`
+              
               return (
-                <div
-                  className={`relative rounded-full border ${borderColor} shadow-2xl overflow-hidden transform transition-transform duration-[3000ms]`}
-                  style={{
-                    transform: `rotate(${rotation}deg)`,
-                    backgroundImage: `${gradient}, ${separators}, ${radialShade}`,
-                    width: wheelSize,
-                    height: wheelSize,
-                    borderWidth: 5,
-                  }}
-                >
-                  {prizes.map((prize, index) => {
-                    const startDeg = index * segmentAngle
-                    const labelOffset = Math.round(wheelSize * 0.37)
-                    return (
-                      <div
-                        key={prize.id}
-                        className="absolute inset-0 flex items-center justify-center"
+                <div className="relative">
+                  {/* Clean Outer Ring */}
+                  <div 
+                    className="absolute -inset-6 rounded-full border-[8px] border-[#daa520] shadow-2xl bg-[#e31d2b] flex items-center justify-center"
+                    style={{ boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }}
+                  >
+                    {/* Bulbs - Simplified for clarity */}
+                    {[...Array(12)].map((_, i) => (
+                      <div 
+                        key={i}
+                        className="absolute w-2.5 h-2.5 rounded-full bg-[#fff1a8] border border-amber-600 animate-pulse shadow-[0_0_8px_#ffd700]"
                         style={{
-                          transform: `rotate(${startDeg + segmentAngle / 2}deg)`,
+                          transform: `rotate(${i * 30}deg) translateY(-${wheelSize / 2 + 15}px)`
                         }}
-                      >
-                      <div
-                        className="text-white font-semibold text-[13px] md:text-sm flex flex-col items-center gap-1 drop-shadow"
-                        style={{ transform: `translateY(-${labelOffset}px) rotate(-90deg)`, transformOrigin: "center" }}
-                      >
-                        {prize.imageUrl ? (
-                          <img
-                            src={prize.imageUrl}
-                            alt={prize.name}
-                            className="w-12 h-12 md:w-[72px] md:h-[72px] object-contain drop-shadow-md"
-                          />
-                        ) : (
-                          <span
-                            className="text-center whitespace-nowrap text-lg"
+                      />
+                    ))}
+                  </div>
+
+                  {/* The Wheel */}
+                  <div
+                    className={`relative rounded-full border-4 border-[#daa520] overflow-hidden transform transition-transform duration-[4000ms] ease-[cubic-bezier(0.1, 0, 0.1, 1)]`}
+                    style={{
+                      transform: `rotate(${rotation}deg)`,
+                      backgroundImage: gradient,
+                      width: wheelSize,
+                      height: wheelSize,
+                      boxShadow: "inset 0 0 40px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    {prizes.map((prize, index) => {
+                      const startDeg = index * segmentAngle
+                      const labelOffset = Math.round(wheelSize * 0.35)
+                      const isLightBg = (prize.color || fallbackColors[index % fallbackColors.length]) === "#fff1a8"
+                      
+                      return (
+                        <div
+                          key={prize.id}
+                          className="absolute inset-0 flex items-center justify-center"
+                          style={{
+                            transform: `rotate(${startDeg + segmentAngle / 2}deg)`,
+                          }}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-1"
+                            style={{ 
+                              transform: `translateY(-${labelOffset}px) rotate(-90deg)`, 
+                              transformOrigin: "center",
+                              color: isLightBg ? "#1a1a1a" : "#ffffff",
+                              width: segmentAngle * (wheelSize / 150), // Prevent text overflow
+                            }}
                           >
-                            {prize.name}
-                          </span>
-                        )}
-                      </div>
-                      </div>
-                    )
-                  })}
-                  {/* Removed inner ring to match design */}
+                            {prize.imageUrl ? (
+                              <img
+                                src={prize.imageUrl}
+                                alt={prize.name}
+                                className="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-md"
+                              />
+                            ) : (
+                              <span
+                                className="text-center font-black uppercase text-sm md:text-base lg:text-lg leading-none break-words"
+                                style={{
+                                  maxWidth: "100px",
+                                  textShadow: isLightBg ? "none" : "0 2px 4px rgba(0,0,0,0.5)"
+                                }}
+                              >
+                                {prize.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Clean Center Cap */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                    <div className="w-12 h-12 rounded-full border-4 border-[#8b6508] bg-gradient-to-b from-[#f7e082] to-[#daa520] shadow-xl flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-white/20 blur-[1px]" />
+                    </div>
+                  </div>
                 </div>
               )
             })()
@@ -265,37 +316,58 @@ export function SpinnerWheel({
           {prizes.length > 0 && hasAvailablePrizes && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative pointer-events-auto">
-                <div
-                  className="w-8 h-8 rounded-full bg-white shadow-sm"
-                />
+                {/* Center dot removed in favor of golden cap */}
               </div>
             </div>
           )}
           {pointerSide === "right" && (
-            <div className="absolute top-1/2 -translate-y-1/2 -right-6 w-0 h-0 border-l-8 border-l-white border-y-8 border-y-transparent drop-shadow-md" />
+            <div className="absolute top-1/2 -translate-y-1/2 -right-6 z-50 flex items-center">
+              {/* Triangular Pointer Body (Right-pointing) */}
+              <div className="relative w-12 h-12 drop-shadow-[4px_0_6px_rgba(0,0,0,0.5)]">
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 48 48"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full"
+                >
+                  <path
+                    d="M0 24L48 0V48L0 24Z"
+                    fill="url(#pointer-gradient-right)"
+                  />
+                  <defs>
+                    <linearGradient id="pointer-gradient-right" x1="48" y1="24" x2="0" y2="24" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stopColor="#FFD54F" />
+                      <stop offset="1" stopColor="#FFA000" />
+                    </linearGradient>
+                  </defs>
+                  {/* Subtle edge highlight */}
+                  <path
+                    d="M46 2L46 46"
+                    stroke="white"
+                    strokeWidth="1"
+                    strokeOpacity="0.3"
+                  />
+                </svg>
+              </div>
+            </div>
           )}
         </div>
 
         <Button
           onClick={handleSpin}
           disabled={isSpinning || hasSpun || !hasAvailablePrizes}
-          className={`relative px-16 py-10 rounded-2xl border-b-4 border-white/30 text-2xl font-bold shadow-2xl transform transition-all hover:scale-105 active:scale-95 active:translate-y-1 flex flex-col items-center leading-tight overflow-hidden group ${
+          className={`relative px-12 py-8 rounded-xl border-b-4 border-black/20 text-xl font-bold shadow-xl transform transition-all hover:scale-105 active:scale-95 active:translate-y-1 flex flex-col items-center leading-tight overflow-hidden group ${
             isSpinning ? "opacity-50 cursor-not-allowed" : ""
           } ${!customColors?.primary ? buttonClasses : ""}`}
           style={{
             ...(customColors?.primary
               ? { backgroundColor: customColors.primary, color: "white" }
-              : {}),
+              : { background: "linear-gradient(to bottom, #ff4e50, #f9d423)" }),
             fontFamily: "fantasy",
-            boxShadow: customColors?.primary 
-              ? `0 10px 0 0 ${customColors.primary}88, 0 15px 30px -10px rgba(0,0,0,0.5)`
-              : undefined
           }}
         >
-          {/* Modern Glossy Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-          
           {isSpinning ? (
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:-0.3s]" />
@@ -304,13 +376,11 @@ export function SpinnerWheel({
             </div>
           ) : (
             <div className="relative z-10 flex flex-col items-center">
-              <span className="text-3xl font-black tracking-tighter drop-shadow-lg mb-0.5">TOURNEZ</span>
-              <span className="text-[12px] font-bold uppercase tracking-[0.2em] drop-shadow-sm">pour la Gloire</span>
+              <span className="text-3xl font-black tracking-tight drop-shadow-md uppercase">TOURNEZ</span>
+              <span className="text-[12px] font-bold uppercase tracking-widest opacity-90">pour la Gloire</span>
             </div>
           )}
-
-          {/* Shine effect on hover */}
-          <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-40 group-hover:animate-shine pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
         </Button>
 
         {showWinnerModal && resultPrize && (

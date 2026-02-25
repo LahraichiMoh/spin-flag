@@ -139,4 +139,11 @@
   .animate-shine {
     animation: shine 1.5s ease-in-out infinite;
   }
+  @keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 5px #ffd700, 0 0 10px #ffd700; opacity: 1; }
+    50% { box-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700; opacity: 0.7; }
+  }
+  .animate-pulse-gold {
+    animation: pulse-gold 2s ease-in-out infinite;
+  }
 }
