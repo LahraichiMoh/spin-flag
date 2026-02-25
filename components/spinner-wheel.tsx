@@ -229,7 +229,7 @@ export function SpinnerWheel({
                       >
                       <div
                         className="text-white font-semibold text-[13px] md:text-sm flex flex-col items-center gap-1 drop-shadow"
-                        style={{ transform: `translateY(-${labelOffset}px)` }}
+                        style={{ transform: `translateY(-${labelOffset}px) rotate(-90deg)`, transformOrigin: "center" }}
                       >
                         {prize.imageUrl ? (
                           <img
@@ -239,8 +239,7 @@ export function SpinnerWheel({
                           />
                         ) : (
                           <span
-                            className="text-center max-w-[120px] md:max-w-[128px]"
-                            style={theme === "gold" ? { writingMode: "sideways-lr" } : undefined}
+                            className="text-center whitespace-nowrap text-lg"
                           >
                             {prize.name}
                           </span>
@@ -267,7 +266,7 @@ export function SpinnerWheel({
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative pointer-events-auto">
                 <div
-                  className="w-4 h-4 rounded-full bg-white shadow-sm"
+                  className="w-8 h-8 rounded-full bg-white shadow-sm"
                 />
               </div>
             </div>
@@ -280,7 +279,7 @@ export function SpinnerWheel({
         <Button
           onClick={handleSpin}
           disabled={isSpinning || hasSpun || !hasAvailablePrizes}
-          className={`px-[72px] py-10 border-4 border-white text-2xl font-bold rounded-full shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
+          className={`px-[72px] py-10  border-4 border-white text-2xl font-bold  shadow-xl transform transition-all hover:scale-105 active:scale-95 flex flex-col items-center leading-tight ${
             isSpinning ? "opacity-50 cursor-not-allowed" : ""
           } ${!customColors?.primary ? buttonClasses : ""}`}
           style={
@@ -293,7 +292,7 @@ export function SpinnerWheel({
             "..."
           ) : (
             <>
-              <span className="text-3xl font-black tracking-wide">TOURNEZ</span>
+              <span className="text-3xl font-black tracking-wide  ">TOURNEZ</span>
               <span className="text-sm font-medium opacity-90">pour la Gloire!</span>
             </>
           )}
