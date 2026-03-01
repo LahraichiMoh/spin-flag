@@ -162,7 +162,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="venue">Restau / Bar</Label>
+            <Label htmlFor="venue">Poste / Point de vente</Label>
             <select
               id="venue"
               value={venueId}
@@ -176,11 +176,11 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
                   ? "Choisir d'abord une ville"
                   : loadingVenues
                     ? "Chargement..."
-                    : "Choisir un établissement"}
+                    : "Choisir un point de vente"}
               </option>
               {venues.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name}{v.type ? ` (${v.type})` : ""}
+                  {v.name}
                 </option>
               ))}
             </select>
@@ -225,9 +225,9 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
                 <span className="font-semibold text-right">{selectedCity?.name || "-"}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Restau / Bar</span>
+                <span className="text-muted-foreground">Point de vente</span>
                 <span className="font-semibold text-right">
-                  {selectedVenue ? `${selectedVenue.name}${selectedVenue.type ? ` (${selectedVenue.type})` : ""}` : "-"}
+                  {selectedVenue ? selectedVenue.name : "-"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">

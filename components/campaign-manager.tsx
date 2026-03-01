@@ -417,7 +417,7 @@ export function CampaignManager() {
           <TabsContent value="venues">
             <Card>
               <CardHeader>
-                <CardTitle>Restau / Bar</CardTitle>
+                <CardTitle>Poste / Point de vente</CardTitle>
                 <CardDescription>Créez des établissements et associez-les à une ville.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -439,21 +439,8 @@ export function CampaignManager() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Nom (Restau / Bar)</Label>
-                    <Input value={newVenueName} onChange={(e) => setNewVenueName(e.target.value)} placeholder="Ex: Le Nord Bar" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <select
-                      value={newVenueType}
-                      onChange={(e) => setNewVenueType(e.target.value as any)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    >
-                      <option value="bar">bar</option>
-                      <option value="restau">restau</option>
-                      <option value="point de vente">point de vente</option>
-                    </select>
+                    <Label>Nom (Poste / Point de vente)</Label>
+                    <Input value={newVenueName} onChange={(e) => setNewVenueName(e.target.value)} placeholder="Ex: Point de vente Centre" />
                   </div>
 
                   <div className="space-y-2">
@@ -461,7 +448,7 @@ export function CampaignManager() {
                     <Input type="number" min="0" value={newVenueStock} onChange={(e) => setNewVenueStock(e.target.value)} />
                   </div>
 
-                  <div className="md:col-span-2 flex items-end justify-end">
+                  <div className="flex items-end justify-end">
                     <Button
                       type="button"
                       className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -478,7 +465,6 @@ export function CampaignManager() {
                             city_id: locationCityId,
                             campaign_id: editingCampaign.id,
                             name: newVenueName.trim(),
-                            type: newVenueType,
                             stock: parseInt(newVenueStock) || 0,
                           })
                           if (venueError) {
@@ -488,7 +474,7 @@ export function CampaignManager() {
 
                           const { data: venuesData, error: venuesError } = await supabase
                             .from("venues")
-                            .select("id, name, type, stock, city_id, campaign_id, city:cities ( id, name )")
+                            .select("id, name, stock, city_id, campaign_id, city:cities ( id, name )")
                             .eq("campaign_id", editingCampaign.id)
                             .order("name")
                           if (venuesError) {
@@ -497,7 +483,6 @@ export function CampaignManager() {
                           setLocationVenues((venuesData || []) as any)
 
                           setNewVenueName("")
-                          setNewVenueType("bar")
                           setNewVenueStock("0")
                           toast.success("Établissement créé")
                         } catch (err) {
@@ -526,7 +511,7 @@ export function CampaignManager() {
                         const supabase = createClient()
                         const { data, error } = await supabase
                           .from("venues")
-                          .select("id, name, type, stock, city_id, campaign_id, city:cities ( id, name )")
+                          .select("id, name, stock, city_id, campaign_id, city:cities ( id, name )")
                           .eq("campaign_id", editingCampaign.id)
                           .order("name")
                         if (error) toast.error(error.message || "Erreur lors du chargement des établissements")
@@ -544,7 +529,7 @@ export function CampaignManager() {
                         <div key={v.id} className="flex items-center justify-between border rounded-lg p-3 bg-slate-50">
                           <div className="flex flex-col">
                             <span className="font-medium text-slate-800">
-                              {v.name}{v.type ? ` (${v.type})` : ""}
+                              {v.name}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {v.city?.name || "-"}

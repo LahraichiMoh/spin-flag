@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { finalizeSpin, getSpinData } from "@/app/actions/finalize-spin"
 import { Loader2 } from "lucide-react"
 import { type Campaign } from "@/app/actions/campaigns"
+import { ParticipantForm, type ParticipantDetails } from "@/components/participant-form"
+import { toast } from "sonner"
 
 interface Participant {
   id: string
@@ -49,6 +51,8 @@ export default function SpinPage() {
   const [spinError, setSpinError] = useState<string | null>(null)
   const [cityId, setCityId] = useState<string | undefined>(undefined)
   const [creatingReplay, setCreatingReplay] = useState(false)
+  const [showParticipantForm, setShowParticipantForm] = useState(true)
+  const [participantDetails, setParticipantDetails] = useState<ParticipantDetails | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -255,6 +259,24 @@ export default function SpinPage() {
       setSpinError(null)
       const selectedPrize = prizes.find((p) => p.id === selectedPrizeId)
 
+      // Save participant details to public.participant_details
+      if (participantDetails) {
+        const supabase = createClient()
+        const { error: detailError } = await supabase.from("participant_details").insert({
+          participant_id: participantId,
+          full_name: participantDetails.fullName,
+          gender: participantDetails.gender,
+          age_range: participantDetails.ageRange,
+          address: participantDetails.address,
+          usual_product: participantDetails.usualProduct,
+          campaign_id: participant?.campaign_id,
+        })
+        if (detailError) {
+          console.error("Error saving participant details:", detailError)
+          // We continue even if detail saving fails, but log it
+        }
+      }
+
       const result = await finalizeSpin(participantId, selectedPrizeId, cityId, isAdmin)
       if (!result.success) {
         // If limit reached, show friendly message
@@ -320,6 +342,11 @@ export default function SpinPage() {
       const firstId = crypto.randomUUID()
       const first = await supabase.from("participants").insert({ ...insertBase, id: firstId })
       if (!first.error) {
+        setCreatingReplay(false)
+        setShowParticipantForm(true)
+        setParticipantDetails(null)
+        setHasSpun(false)
+        setResultPrize(null)
         router.replace(`/spin/${firstId}`)
         return
       }
@@ -334,6 +361,11 @@ export default function SpinPage() {
         .insert({ ...insertBase, id: secondId, code: `${baseCode}-${suffix}` })
       if (second.error) throw second.error
 
+      setCreatingReplay(false)
+      setShowParticipantForm(true)
+      setParticipantDetails(null)
+      setHasSpun(false)
+      setResultPrize(null)
       router.replace(`/spin/${secondId}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur lors de la création d'un nouveau participant"
@@ -382,6 +414,11 @@ export default function SpinPage() {
     available: p.available !== undefined ? p.available : p.current_winners < p.max_winners,
   }))
 
+  const handleParticipantSubmit = (details: ParticipantDetails) => {
+    setParticipantDetails(details)
+    setShowParticipantForm(false)
+  }
+
   return (
       <main
         className="min-h-screen relative overflow-hidden bg-[#002366]"
@@ -389,12 +426,20 @@ export default function SpinPage() {
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/5 pointer-events-none" />
         <div className="relative z-10 min-h-screen flex flex-col justify-center">
-          <section className="w-full grid grid-cols-1 md:grid-cols-2 items-center px-6 md:px-12 gap-8">
-            <div className="flex justify-center md:justify-start md:pl-10 lg:pl-20">
-              <div className="flex flex-col items-center">
+          <section className="w-full flex flex-col items-center justify-center px-6 md:px-12">
+            {showParticipantForm ? (
+              <div className="w-full max-w-md animate-in fade-in zoom-in duration-300">
+                <ParticipantForm 
+                  campaignName={campaign?.name || "Orange Money"} 
+                  primaryColor={campaign?.theme?.primaryColor}
+                  logoUrl={campaign?.theme?.logoUrl}
+                  onSubmit={handleParticipantSubmit}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-500">
                 <SpinnerWheel
-                  className="-mt-20 md:mt-0"
-                  participantName={participant.name}
+                  participantName={participantDetails?.fullName || participant.name}
                   prizes={wheelPrizes}
                   onSpinComplete={handleSpinComplete}
                   hasSpun={hasSpun}
@@ -414,18 +459,16 @@ export default function SpinPage() {
 
                 {hasSpun && (
                   <Button
-                    className="mt-4 w-full max-w-xs shadow-lg border border-white/20 bg-white/90 text-slate-900 hover:bg-white"
-                    style={campaign?.theme?.primaryColor ? { backgroundColor: campaign.theme.primaryColor, color: "white" } : undefined}
+                    className="mt-12 w-full max-w-xs shadow-xl border-2 border-white/30 text-lg font-bold py-8 transition-all hover:scale-105 active:scale-95"
+                    style={campaign?.theme?.primaryColor ? { backgroundColor: campaign.theme.primaryColor, color: "white" } : { background: "linear-gradient(to right, #f97316, #ed8936)" }}
                     onClick={handleReplay}
                     disabled={creatingReplay}
                   >
-                    {creatingReplay ? <Loader2 className="h-4 w-4 animate-spin" /> : "Nouveau tour"}
+                    {creatingReplay ? <Loader2 className="h-5 w-5 animate-spin" /> : "Nouveau tour"}
                   </Button>
                 )}
               </div>
-            </div>
-            <div className="hidden md:flex justify-center items-center w-full">
-            </div>
+            )}
         </section>
       </div>
     </main>
