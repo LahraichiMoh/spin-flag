@@ -265,6 +265,7 @@ export default function SpinPage() {
         const { error: detailError } = await supabase.from("participant_details").insert({
           participant_id: participantId,
           full_name: participantDetails.fullName,
+          phone: participantDetails.phone,
           gender: participantDetails.gender,
           age_range: participantDetails.ageRange,
           address: participantDetails.address,

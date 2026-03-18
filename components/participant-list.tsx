@@ -24,6 +24,7 @@ interface Participant {
   campaign_id?: string
   participant_details?: {
     full_name: string
+    phone: string
     gender: string
     age_range: string
     address: string
@@ -166,7 +167,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
       for (let offset = 0; offset < total; offset += chunkSize) {
         let query = supabase
           .from("participants")
-          .select("name, code, city, prize_id, created_at, participant_details(full_name, gender, age_range, address, usual_product)")
+          .select("name, code, city, prize_id, created_at, participant_details(full_name, phone, gender, age_range, address, usual_product)")
           .order("created_at", { ascending: false })
           .range(offset, offset + chunkSize - 1)
 
@@ -184,6 +185,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
         "code",
         "city",
         "full_name",
+        "phone",
         "gender",
         "age_range",
         "address",
@@ -210,6 +212,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           ...(r as any), 
           prize_name: prizeName,
           full_name: details.full_name || "",
+          phone: details.phone || "",
           gender: details.gender || "",
           age_range: details.age_range || "",
           address: details.address || "",
@@ -263,7 +266,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
 
         let query = supabase
           .from("participants")
-          .select("*, participant_details(full_name, gender, age_range, address, usual_product)", { count: "exact" })
+          .select("*, participant_details(full_name, phone, gender, age_range, address, usual_product)", { count: "exact" })
           .order("created_at", { ascending: !sortDesc })
 
         if (campaignId) query = query.eq("campaign_id", campaignId)
@@ -394,9 +397,12 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                     <div className="flex flex-col">
                       <span className="font-semibold">{details?.full_name || p.name}</span>
                       {details && (
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                          {details.gender} • {details.age_range}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-mono text-slate-700">{details.phone}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                            {details.gender} • {details.age_range}
+                          </span>
+                        </div>
                       )}
                     </div>
                     {p.won ? (
@@ -472,7 +478,8 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                               {details ? (
                                 <div className="flex flex-col">
                                   <span className="font-semibold text-slate-900">{details.full_name}</span>
-                                  <span className="text-xs text-slate-500">{details.gender}, {details.age_range}</span>
+                                  <span className="text-xs text-slate-600 font-mono">{details.phone}</span>
+                                  <span className="text-[10px] text-slate-500">{details.gender}, {details.age_range}</span>
                                 </div>
                               ) : (
                                 <span className="text-slate-400">Pas de détails</span>

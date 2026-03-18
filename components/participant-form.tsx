@@ -16,6 +16,7 @@ interface ParticipantFormProps {
 
 export interface ParticipantDetails {
   fullName: string
+  phone: string
   gender: string
   ageRange: string
   address: string
@@ -25,6 +26,7 @@ export interface ParticipantDetails {
 export function ParticipantForm({ campaignName, primaryColor, logoUrl, onSubmit }: ParticipantFormProps) {
   const [formData, setFormData] = useState<ParticipantDetails>({
     fullName: "",
+    phone: "",
     gender: "",
     ageRange: "",
     address: "",
@@ -66,6 +68,19 @@ export function ParticipantForm({ campaignName, primaryColor, logoUrl, onSubmit 
               placeholder="Ex: Ahmed Alaoui"
               value={formData.fullName}
               onChange={(e) => handleChange("fullName", e.target.value)}
+              className="border-slate-200 focus:ring-2 focus:ring-orange-500"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="phone" className="text-slate-700 font-semibold">Téléphone</Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="0* ** ** ** **"
+              value={formData.phone}
+              onChange={(e) => handleChange("phone", e.target.value)}
               className="border-slate-200 focus:ring-2 focus:ring-orange-500"
               required
             />
