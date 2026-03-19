@@ -34,7 +34,7 @@ export default async function HomePage() {
             />
           </div> */}
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl md:text-6xl mb-4">
-            <span className="block text-[#002366]">Nos Campagnes</span>
+            <span className="block text-[#ff7900]">Nos Campagnes</span>
             <span className="block text-[#C5A572]">En Cours</span>
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
@@ -59,7 +59,7 @@ export default async function HomePage() {
                      ) : (
                         <div 
                           className="flex items-center justify-center h-full w-full text-white font-bold text-4xl"
-                          style={{ backgroundColor: campaign.theme?.primaryColor || '#002366' }}
+                          style={{ backgroundColor: campaign.theme?.primaryColor || '#ff7900' }}
                         >
                            {campaign.name.charAt(0)}
                         </div>
@@ -98,7 +98,7 @@ export default async function HomePage() {
                         <Button 
                           className="w-full text-lg font-bold py-6 shadow-md hover:shadow-lg transition-all" 
                           style={{ 
-                            backgroundColor: campaign.theme?.primaryColor || '#002366', 
+                            backgroundColor: campaign.theme?.primaryColor || '#ff7900', 
                             color: 'white' 
                           }}
                         >

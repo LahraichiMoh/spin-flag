@@ -383,7 +383,7 @@ export default function SpinPage() {
     const bgUrl = campaign?.theme?.backgroundUrl || "/flag-back.jpg"
     return (
       <main 
-        className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#002366]"
+        className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black"
         style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", backgroundPosition: "center" }}
       >
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -466,7 +466,7 @@ export default function SpinPage() {
 
   return (
       <main
-        className="min-h-screen relative overflow-hidden bg-[#002366]"
+        className="min-h-screen relative overflow-hidden bg-black"
         style={bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/5 pointer-events-none" />
