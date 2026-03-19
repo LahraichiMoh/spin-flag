@@ -8,22 +8,18 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "JoubaJeu - Spin and Win",
+  title: "Orange Money - Spin and Win",
   description: "Spin the wheel to win amazing prizes!",
   generator: "v0.app",
   icons: {
     icon: [
       {
-        url: "/casa_logo.png",
+        url: "/orange.jpg",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/casa_logo.png",
+        url: "/orange.jpg",
         media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
       },
     ],
     apple: "/apple-icon.png",
