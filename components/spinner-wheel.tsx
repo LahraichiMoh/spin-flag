@@ -9,6 +9,7 @@ interface Prize {
   imageUrl?: string
   color?: string
   available?: boolean
+  is_prize?: boolean
 }
 
 interface SpinnerWheelProps {
@@ -395,20 +396,24 @@ export function SpinnerWheel({
 
               <div className="relative z-10">
                   <p 
-                    className={`text-2xl md:text-3xl font-extrabold ${theme === "gold" ? "text-amber-700" : "text-blue-900"}`}
-                    style={customColors?.primary ? { color: customColors.primary } : undefined}
+                    className={`text-2xl md:text-3xl font-extrabold ${resultPrize.is_prize === false ? "text-red-600" : (theme === "gold" ? "text-amber-700" : "text-blue-900")}`}
+                    style={resultPrize.is_prize !== false && customColors?.primary ? { color: customColors.primary } : undefined}
                   >
-                    Félicitations !
+                    {resultPrize.is_prize === false ? "Oups !" : "Félicitations !"}
                   </p>
                   <p 
                     className={`text-xl md:text-2xl font-bold mt-2 ${theme === "gold" ? "text-amber-800" : "text-blue-800"}`}
                     style={customColors?.primary ? { color: customColors.primary, opacity: 0.9 } : undefined}
                   >
-                    Vous avez gagné: {resultPrize.name}
+                    {resultPrize.is_prize === false ? resultPrize.name : `Vous avez gagné : ${resultPrize.name}`}
                   </p>
                   {resultPrize.imageUrl && (resultPrize.imageUrl.startsWith("/") || resultPrize.imageUrl.startsWith("http")) ? (
                     <img src={resultPrize.imageUrl} alt={resultPrize.name} className="w-36 h-36 md:w-36 md:h-36 mx-auto my-5 object-contain drop-shadow-lg" />
-                  ) : null}
+                  ) : (
+                    resultPrize.is_prize === false && (
+                      <div className="text-6xl my-6">😔</div>
+                    )
+                  )}
                   <Button 
                     onClick={() => setShowWinnerModal(false)} 
                     className={`mt-6 text-white font-bold ${theme === "gold" ? "bg-amber-600 hover:bg-amber-700" : "bg-blue-900 hover:bg-blue-800"}`}

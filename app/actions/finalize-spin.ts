@@ -69,12 +69,24 @@ export async function finalizeSpin(participantId: string, selectedPrizeId: strin
     // --- CHECK LIMITS BEFORE AWARDING PRIZE ---
     const { data: prizeData, error: prizeFetchError } = await supabase
       .from("gifts")
-      .select("current_winners, max_winners")
+      .select("current_winners, max_winners, is_prize")
       .eq("id", selectedPrizeId)
       .single()
 
     if (prizeFetchError) {
       throw prizeFetchError
+    }
+
+    // If it's NOT a prize (e.g. "Oops"), we don't check limits or increment winners
+    if (prizeData.is_prize === false) {
+      const { error: updateParticipantError } = await supabase
+        .from("participants")
+        .update({ won: false, prize_id: selectedPrizeId })
+        .eq("id", participantId)
+        .eq("won", false)
+
+      if (updateParticipantError) throw updateParticipantError
+      return { success: true }
     }
 
     const venueTotalRes = await getGiftGlobalTotalFromVenueLimits(selectedPrizeId)

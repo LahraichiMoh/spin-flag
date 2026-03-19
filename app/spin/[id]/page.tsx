@@ -35,6 +35,7 @@ interface Prize {
   color?: string
   campaign_id?: string
   available?: boolean
+  is_prize: boolean
 }
 
 export default function SpinPage() {
@@ -47,7 +48,7 @@ export default function SpinPage() {
   const [loading, setLoading] = useState(true)
   const [hasSpun, setHasSpun] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [resultPrize, setResultPrize] = useState<{ id: string; name: string; imageUrl?: string; color?: string } | null>(null)
+  const [resultPrize, setResultPrize] = useState<{ id: string; name: string; imageUrl?: string; color?: string; is_prize?: boolean } | null>(null)
   const [spinError, setSpinError] = useState<string | null>(null)
   const [cityId, setCityId] = useState<string | undefined>(undefined)
   const [creatingReplay, setCreatingReplay] = useState(false)
@@ -75,6 +76,9 @@ export default function SpinPage() {
         if (!spinData.success || !spinData.data) throw new Error(spinData.error || "Failed to load spin data")
         const participantData = spinData.data.participant as any
         const campaignData = spinData.data.campaign as any
+        
+        // Set campaign early so the loading screen can display the logo and background
+        setCampaign(campaignData)
         
         if (participantData.won) {
           try {
@@ -307,9 +311,9 @@ export default function SpinPage() {
         ? {
             id: selectedPrize.id,
             name: selectedPrize.name,
-            imageUrl:
-              selectedPrize.image_url,
+            imageUrl: selectedPrize.image_url,
             color: selectedPrize.color,
+            is_prize: selectedPrize.is_prize,
           }
         : null
       setResultPrize(mapped)
@@ -376,12 +380,51 @@ export default function SpinPage() {
   }
 
   if (loading) {
+    const bgUrl = campaign?.theme?.backgroundUrl || "/flag-back.jpg"
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 text-blue-700 animate-spin" />
-          <p className="text-blue-900 font-medium">Chargement...</p>
+      <main 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#002366]"
+        style={{ backgroundImage: `url(${bgUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", backgroundPosition: "center" }}
+      >
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        <div className="relative z-10 flex flex-col items-center gap-10">
+          <div className="relative">
+            <div className="w-36 h-36 bg-white/10 rounded-[2.5rem] flex items-center justify-center backdrop-blur-2xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in duration-700">
+               {/* Animated Logo Placeholder */}
+               <div className="w-24 h-24 bg-black rounded-3xl flex items-center justify-center shadow-xl relative overflow-hidden group">
+                  {campaign?.theme?.logoUrl ? (
+                    <img src={campaign.theme.logoUrl} alt="Logo" className="w-full h-full object-contain p-2 relative z-10" />
+                  ) : (
+                    <img src="/orange.jpg" alt="Logo" className="w-full h-full object-contain p-2 relative z-10" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine pointer-events-none" />
+               </div>
+            </div>
+            {/* Decorative spinning elements */}
+            <div className="absolute inset-[-15px] border border-orange-500/30 rounded-full animate-[spin_15s_linear_infinite]" />
+            <div className="absolute inset-[-25px] border border-white/10 rounded-full animate-[spin_20s_linear_infinite_reverse]" />
+          </div>
+          
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-white font-black tracking-[0.4em] uppercase text-xs opacity-50">Préparez-vous</p>
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 text-orange-500 animate-spin" />
+                <p className="text-white font-black tracking-[0.2em] uppercase text-lg">Chargement</p>
+              </div>
+            </div>
+            <div className="w-64 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+              <div className="h-full bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600 w-full animate-[loading_2s_ease-in-out_infinite]" />
+            </div>
+          </div>
         </div>
+        <style jsx>{`
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
       </main>
     )
   }
@@ -413,6 +456,7 @@ export default function SpinPage() {
     imageUrl: p.image_url,
     color: p.color,
     available: p.available !== undefined ? p.available : p.current_winners < p.max_winners,
+    is_prize: p.is_prize,
   }))
 
   const handleParticipantSubmit = (details: ParticipantDetails) => {

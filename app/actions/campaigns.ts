@@ -37,6 +37,7 @@ export interface Gift {
   created_by?: string
   available?: boolean // Computed field
   venue_total_max_winners?: number
+  is_prize: boolean
 }
 
 function isMissingAccessColumnsError(err: unknown) {
@@ -377,6 +378,7 @@ export async function createCampaignGift(campaignId: string, gift: {
   image_url?: string
   max_winners: number
   color?: string
+  is_prize?: boolean
 }) {
   const supabase = await createClient()
   
@@ -387,7 +389,8 @@ export async function createCampaignGift(campaignId: string, gift: {
     ...gift,
     campaign_id: campaignId,
     created_by: user.id,
-    current_winners: 0
+    current_winners: 0,
+    is_prize: gift.is_prize ?? true
   }
 
   const { data, error } = await supabase
@@ -410,6 +413,7 @@ export async function updateCampaignGift(giftId: string, updates: {
   image_url?: string
   max_winners?: number
   color?: string
+  is_prize?: boolean
 }) {
   const supabase = await createClient()
   
@@ -569,7 +573,7 @@ export async function getAvailablePrizes(campaignId: string, cityId?: string, ci
   // 1. Get all gifts for campaign
   const { data: gifts, error: giftsError } = await supabase
     .from("gifts")
-    .select("*")
+    .select("id, name, image_url, max_winners, current_winners, color, campaign_id, created_by, is_prize")
     .eq("campaign_id", campaignId)
     .order("created_at", { ascending: true })
 

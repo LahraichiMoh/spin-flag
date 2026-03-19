@@ -129,7 +129,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
             </div>
         )}
         <CardTitle className="text-2xl" style={{ color: theme.primaryColor }}>{campaignName}</CardTitle>
-        <CardDescription className="flex flex-col items-center gap-2">
+        {/* <CardDescription className="flex flex-col items-center gap-2">
           <Button 
             variant="link" 
             size="sm" 
@@ -138,7 +138,7 @@ export function CampaignParticipationForm({ campaignId, campaignName, theme }: C
           >
             (Changer de campagne)
           </Button>
-        </CardDescription>
+        </CardDescription> */}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRequestConfirm} className="space-y-4">

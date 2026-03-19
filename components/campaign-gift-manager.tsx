@@ -49,6 +49,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   const [newName, setNewName] = useState("")
   const [newMaxWinners, setNewMaxWinners] = useState("0")
   const [newColor, setNewColor] = useState("#D4A017")
+  const [newIsPrize, setNewIsPrize] = useState(true)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -58,6 +59,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   const [editName, setEditName] = useState("")
   const [editMaxWinners, setEditMaxWinners] = useState("0")
   const [editColor, setEditColor] = useState("")
+  const [editIsPrize, setEditIsPrize] = useState(true)
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null)
   const editFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -110,6 +112,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       name: newName,
       max_winners: parseInt(newMaxWinners) || 0,
       color: newColor,
+      is_prize: newIsPrize,
       image_url: imageUrl || undefined
     })
 
@@ -120,6 +123,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
       setNewName("")
       setNewMaxWinners("0")
       setNewColor("#D4A017")
+      setNewIsPrize(true)
       setImageUrl(null)
       toast.success("Cadeau créé avec succès")
     } else {
@@ -132,6 +136,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
     setEditName(gift.name)
     setEditMaxWinners(gift.max_winners.toString())
     setEditColor(gift.color || "#D4A017")
+    setEditIsPrize(gift.is_prize ?? true)
     setEditImageUrl(gift.image_url || null)
   }
 
@@ -142,6 +147,7 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
         name: editName,
         max_winners: parseInt(editMaxWinners) || 0,
         color: editColor,
+        is_prize: editIsPrize,
         image_url: editImageUrl || undefined
     })
 
@@ -248,6 +254,22 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                   <Input value={newColor} onChange={e => setNewColor(e.target.value)} />
                 </div>
               </div>
+              <div className="space-y-2 flex flex-col justify-end">
+                <div className="flex items-center gap-2 mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="newIsPrize" 
+                    checked={newIsPrize} 
+                    onChange={e => setNewIsPrize(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
+                  />
+                  <Label htmlFor="newIsPrize" className="cursor-pointer">Cadeau réel (Gagnant)</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Décochez pour les segments "Perdu" (ex: Oups, Rejouer). 
+                  Le stock ne sera pas décompté.
+                </p>
+              </div>
               <div className="col-span-2 space-y-2">
                 <Label>Image</Label>
                 <div className="flex gap-4 items-center">
@@ -301,6 +323,22 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                   <Input type="color" value={editColor} onChange={e => setEditColor(e.target.value)} className="w-12 p-1" />
                   <Input value={editColor} onChange={e => setEditColor(e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 flex flex-col justify-end">
+                <div className="flex items-center gap-2 mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="editIsPrize" 
+                    checked={editIsPrize} 
+                    onChange={e => setEditIsPrize(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
+                  />
+                  <Label htmlFor="editIsPrize" className="cursor-pointer">Cadeau réel (Gagnant)</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Décochez pour les segments "Perdu" (ex: Oups, Rejouer). 
+                  Le stock ne sera pas décompté.
+                </p>
               </div>
               <div className="col-span-2 space-y-2">
                 <Label>Image</Label>
@@ -358,7 +396,14 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
                   <div>
-                    <CardTitle className="text-base">{gift.name}</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {gift.name}
+                      {gift.is_prize === false && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 uppercase tracking-tighter">
+                          Perdu
+                        </span>
+                      )}
+                    </CardTitle>
                     <CardDescription className="text-xs">
                       Stock global:{" "}
                       {totalLabel}

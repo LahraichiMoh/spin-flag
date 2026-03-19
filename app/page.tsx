@@ -1,4 +1,5 @@
 import { getCampaigns } from "@/app/actions/campaigns"
+import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -9,7 +10,14 @@ export const dynamic = "force-dynamic"
 export default async function HomePage() {
   const { data: campaigns } = await getCampaigns()
   
-  // Filter active campaigns (assuming is_active defaults to true if undefined, or strictly check true)
+  // Find Orange Money campaign to make it the active one
+  const orangeMoney = campaigns?.find(c => c.name.toLowerCase().includes("orange money"))
+  
+  if (orangeMoney) {
+    redirect(`/c/${orangeMoney.slug}`)
+  }
+
+  // Fallback if not found or if there are other campaigns
   const activeCampaigns = campaigns?.filter(c => c.is_active !== false) || []
 
   return (
