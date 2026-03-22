@@ -26,7 +26,7 @@ export default async function HomePage() {
        <div className="mb-12 text-center max-w-4xl mx-auto">
           {/* <div className="flex justify-center mb-6">
             <Image 
-              src="/casa_logo.png" 
+              src="/orange.jpg" 
               alt="Logo" 
               width={120} 
               height={120} 

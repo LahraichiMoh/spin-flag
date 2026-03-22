@@ -172,7 +172,7 @@ export function CityManager() {
                     id="username"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    placeholder="ex. casa_admin"
+                    placeholder="ex. orange_admin"
                     required={isAdding}
                   />
                 </div>

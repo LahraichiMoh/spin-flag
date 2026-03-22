@@ -26,7 +26,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
       <div className="border-b bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/casa_logo.png" alt="Logo" className="h-10 w-10 rounded-lg ring-1 ring-slate-200 bg-white object-contain" />
+            <img src="/orange.jpg" alt="Logo" className="h-10 w-10 rounded-lg ring-1 ring-slate-200 bg-white object-contain" />
             <div className="min-w-0">
               <div className="text-xl font-extrabold text-slate-900 truncate">Tableau de bord</div>
               <div className="text-sm text-slate-600 truncate">Administration des campagnes</div>

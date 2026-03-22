@@ -32,7 +32,7 @@ export function ParticipationForm({ campaign, city: prefilledCity }: Participati
   const isFormValid = name.trim().length > 0 && city.trim().length > 0 && code.trim().length > 0
   
   // Theme derived from campaign or defaults
-  const logoUrl = campaign?.theme?.logoUrl || "/casa_logo.png"
+  const logoUrl = campaign?.theme?.logoUrl || "/orange.jpg"
   const primaryColor = campaign?.theme?.primaryColor || "#7f1d1d" // red-900
   const secondaryColor = campaign?.theme?.secondaryColor || "#facc15" // yellow-400
 

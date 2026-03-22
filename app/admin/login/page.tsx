@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
   }
 
   const bgUrl = process.env.NEXT_PUBLIC_LOGIN_BG_URL || "/flag-back.jpg"
-  const logoUrl = process.env.NEXT_PUBLIC_LOGIN_LOGO_URL || "/casa_logo.png"
+  const logoUrl = process.env.NEXT_PUBLIC_LOGIN_LOGO_URL || "/orange.jpg"
 
   return (
     <main
