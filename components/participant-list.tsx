@@ -302,6 +302,9 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   }
 
   useEffect(() => {
+    // Wait until both dates are selected if a selection has started
+    if (dateRange.from && !dateRange.to) return
+
     const loadCountsAndPage = async () => {
       setLoading(true)
       try {
@@ -541,11 +544,8 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
-                      mode="range"
                       selected={dateRange}
                       onSelect={(newRange: any) => setDateRange({ from: newRange?.from, to: newRange?.to })}
-                      numberOfMonths={1}
-                      locale={fr}
                     />
                   </PopoverContent>
                 </Popover>

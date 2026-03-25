@@ -41,6 +41,9 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
   })
 
   useEffect(() => {
+    // Wait until both dates are selected if a selection has started
+    if (range.from && !range.to) return
+
     const fetchData = async () => {
       setLoading(true)
       const supabase = createClient()
@@ -105,7 +108,10 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
     return { dailyData: sortedDailyData, cityData, genderData }
   }, [data])
 
-  const COLORS = ["#ff7900", "#000000", "#94a3b8", "#fbbf24", "#ef4444"]
+  const GENDER_COLORS: Record<string, string> = {
+    "Masculin": "#000000",
+    "Féminin": "#ff7900"
+  }
 
   const clearFilters = () => {
     setRange({ from: undefined, to: undefined })
@@ -147,19 +153,13 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
-                mode="range"
-                selected={{
-                  from: range.from,
-                  to: range.to
-                }}
+                selected={range}
                 onSelect={(newRange: any) => {
                   setRange({
                     from: newRange?.from,
                     to: newRange?.to
                   })
                 }}
-                numberOfMonths={1}
-                locale={fr}
               />
             </PopoverContent>
           </Popover>
@@ -266,8 +266,8 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
                         dataKey="value"
                       >
                         {stats.genderData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                    <Cell key={`cell-${index}`} fill={GENDER_COLORS[entry.name] || "#94a3b8"} />
+                  ))}
                       </Pie>
                       <Tooltip 
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
