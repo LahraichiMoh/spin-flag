@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Loader2, Users, MapPin, CalendarDays, PieChart as PieChartIcon, Filter, X, ArrowRight } from "lucide-react"
+import { Loader2, Users, MapPin, CalendarDays, PieChart as PieChartIcon, Filter, X, ArrowRight, Calendar as CalendarIcon } from "lucide-react"
+import { format, subDays, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
+import { fr } from "date-fns/locale"
 import {
   BarChart,
   Bar,
@@ -20,6 +22,9 @@ import {
   Cell,
   Legend
 } from "recharts"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 
 interface CampaignStatsProps {
   campaignId: string
@@ -30,8 +35,10 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
   const [data, setData] = useState<any[]>([])
   
   // Date filter state
-  const [startDate, setStartDate] = useState<string>("")
-  const [endDate, setEndDate] = useState<string>("")
+  const [range, setRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,11 +51,14 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
         .select("created_at, city, participant_details!inner(gender)")
         .eq("campaign_id", campaignId)
 
-      if (startDate) {
-        query = query.gte("created_at", `${startDate}T00:00:00Z`)
+      if (range.from) {
+        query = query.gte("created_at", range.from.toISOString())
       }
-      if (endDate) {
-        query = query.lte("created_at", `${endDate}T23:59:59Z`)
+      if (range.to) {
+        // Set end of day for 'to' date
+        const toDate = new Date(range.to)
+        toDate.setHours(23, 59, 59, 999)
+        query = query.lte("created_at", toDate.toISOString())
       }
 
       const { data: participants, error } = await query
@@ -62,7 +72,7 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
     }
 
     fetchData()
-  }, [campaignId, startDate, endDate])
+  }, [campaignId, range])
 
   // Process data for charts
   const stats = useMemo(() => {
@@ -86,12 +96,8 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
       }
     })
 
-    // Sort active days chronologically
     const sortedDailyData = Object.entries(dailyMap)
       .map(([name, total]) => ({ name, total }))
-      // We don't have the original timestamp here, but since the map was built 
-      // from the participants list which is likely ordered, it's mostly correct.
-      // To be safer, we could extract the date objects.
     
     const cityData = Object.entries(cityMap).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
     const genderData = Object.entries(genderMap).filter(([_, total]) => total > 0).map(([name, value]) => ({ name, value }))
@@ -102,8 +108,7 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
   const COLORS = ["#ff7900", "#000000", "#94a3b8", "#fbbf24", "#ef4444"]
 
   const clearFilters = () => {
-    setStartDate("")
-    setEndDate("")
+    setRange({ from: undefined, to: undefined })
   }
 
   return (
@@ -115,36 +120,63 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
           <span className="text-sm font-semibold uppercase tracking-wider">Période</span>
         </div>
         
-        <div className="flex items-center gap-0 w-full max-w-md group border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20 focus-within:border-orange-500 transition-all">
-          <input 
-            type="date" 
-            value={startDate} 
-            onChange={(e) => setStartDate(e.target.value)}
-            className="flex-1 bg-slate-50/50 px-3 py-2 text-sm outline-none border-none cursor-pointer"
-            placeholder="Début"
-          />
-          <div className="bg-slate-50/50 px-2 flex items-center">
-            <ArrowRight className="h-3 w-3 text-slate-400" />
-          </div>
-          <input 
-            type="date" 
-            value={endDate} 
-            onChange={(e) => setEndDate(e.target.value)}
-            className="flex-1 bg-slate-50/50 px-3 py-2 text-sm outline-none border-none cursor-pointer"
-            placeholder="Fin"
-          />
-        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[260px] justify-start text-left font-normal bg-slate-50/50 border-slate-200 hover:bg-slate-100",
+                  !range.from && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
+                {range.from ? (
+                  range.to ? (
+                    <>
+                      {format(range.from, "dd MMM", { locale: fr })} -{" "}
+                      {format(range.to, "dd MMM", { locale: fr })}
+                    </>
+                  ) : (
+                    format(range.from, "dd MMM yyyy", { locale: fr })
+                  )
+                ) : (
+                  <span>Choisir une période</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={{
+                  from: range.from,
+                  to: range.to
+                }}
+                onSelect={(newRange: any) => {
+                  setRange({
+                    from: newRange?.from,
+                    to: newRange?.to
+                  })
+                }}
+                numberOfMonths={1}
+                locale={fr}
+              />
+            </PopoverContent>
+          </Popover>
 
-        {(startDate || endDate) && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-400 hover:text-red-600 h-9">
-            <X className="h-4 w-4 mr-1" /> Effacer
-          </Button>
-        )}
+          {(range.from || range.to) && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-400 hover:text-red-600 h-9">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
 
         <div className="ml-auto hidden md:block">
           <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest text-right">
-            {startDate && endDate ? (
-              startDate === endDate ? `Journée du ${new Date(startDate).toLocaleDateString('fr-FR')}` : `Du ${new Date(startDate).toLocaleDateString('fr-FR')} au ${new Date(endDate).toLocaleDateString('fr-FR')}`
+            {range.from && range.to ? (
+              range.from.getTime() === range.to.getTime() 
+                ? `Journée du ${format(range.from, "dd MMMM yyyy", { locale: fr })}` 
+                : `Du ${format(range.from, "dd MMM", { locale: fr })} au ${format(range.to, "dd MMM", { locale: fr })}`
             ) : "Affichage de toutes les données"}
           </div>
         </div>

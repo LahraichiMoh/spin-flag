@@ -4,8 +4,14 @@ import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowUpDown, CalendarDays, Download, Loader2, Trophy, Users } from "lucide-react"
+import { ArrowUpDown, CalendarDays, Download, Loader2, Trophy, Users, Filter, X, Calendar as CalendarIcon, MapPin, UserCheck } from "lucide-react"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 
 interface Gift {
   id: string
@@ -53,6 +59,16 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   const [reloadKey, setReloadKey] = useState(0)
   const [exportingAll, setExportingAll] = useState(false)
   const [exportingWinners, setExportingWinners] = useState(false)
+  
+  // New Filters
+  const [selectedCity, setSelectedCity] = useState<string>("")
+  const [selectedAnimator, setSelectedAnimator] = useState<string>("")
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  })
+  const [availableCities, setAvailableCities] = useState<string[]>([])
+  const [availableAnimators, setAvailableAnimators] = useState<string[]>([])
 
   useEffect(() => {
     setWinnersOnly(!!onlyWinners)
@@ -68,7 +84,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   }, [debouncedQuery, winnersOnly, campaignId])
 
   useEffect(() => {
-    const loadGifts = async () => {
+    const loadGiftsAndFilters = async () => {
       try {
         const supabase = createClient()
 
@@ -85,12 +101,27 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           prizeMapTemp[gift.id] = gift
         })
         setPrizeMap(prizeMapTemp)
+
+        // Fetch unique cities and animators for filtering
+        let filterQuery = supabase.from("participants").select("city, name")
+        if (campaignId) {
+          filterQuery = filterQuery.eq("campaign_id", campaignId)
+        }
+        const { data: filterData, error: filterError } = await filterQuery
+        if (filterError) throw filterError
+
+        if (filterData) {
+          const cities = Array.from(new Set(filterData.map(p => p.city).filter(Boolean))) as string[]
+          const animators = Array.from(new Set(filterData.map(p => p.name).filter(Boolean))) as string[]
+          setAvailableCities(cities.sort())
+          setAvailableAnimators(animators.sort())
+        }
       } catch (error) {
-        console.error("Error loading data:", error)
+        console.error("Error loading filters:", error)
       }
     }
 
-    loadGifts()
+    loadGiftsAndFilters()
   }, [campaignId])
 
   useEffect(() => {
@@ -158,6 +189,21 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
         .select("*", { count: "exact", head: true })
       if (campaignId) countQuery = countQuery.eq("campaign_id", campaignId)
       if (options.winnersOnly) countQuery = countQuery.eq("won", true)
+      
+      // Apply same filters to export
+      if (selectedCity) countQuery = countQuery.eq("city", selectedCity)
+      if (selectedAnimator) countQuery = countQuery.eq("name", selectedAnimator)
+      if (dateRange.from) countQuery = countQuery.gte("created_at", dateRange.from.toISOString())
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to)
+        toDate.setHours(23, 59, 59, 999)
+        countQuery = countQuery.lte("created_at", toDate.toISOString())
+      }
+      if (debouncedQuery) {
+        const q = debouncedQuery.replaceAll(",", " ")
+        countQuery = countQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+      }
+      
       const { count, error: countError } = await countQuery
       if (countError) throw countError
       const total = count || 0
@@ -173,6 +219,20 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
 
         if (campaignId) query = query.eq("campaign_id", campaignId)
         if (options.winnersOnly) query = query.eq("won", true)
+        
+        // Apply same filters to rows fetch
+        if (selectedCity) query = query.eq("city", selectedCity)
+        if (selectedAnimator) query = query.eq("name", selectedAnimator)
+        if (dateRange.from) query = query.gte("created_at", dateRange.from.toISOString())
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          query = query.lte("created_at", toDate.toISOString())
+        }
+        if (debouncedQuery) {
+          const q = debouncedQuery.replaceAll(",", " ")
+          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+        }
 
         const { data, error } = await query
         if (error) throw error
@@ -251,6 +311,21 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           .from("participants")
           .select("*", { count: "exact", head: true })
         if (campaignId) totalQuery = totalQuery.eq("campaign_id", campaignId)
+        
+        // Apply Filters to total count
+        if (selectedCity) totalQuery = totalQuery.eq("city", selectedCity)
+        if (selectedAnimator) totalQuery = totalQuery.eq("name", selectedAnimator)
+        if (dateRange.from) totalQuery = totalQuery.gte("created_at", dateRange.from.toISOString())
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          totalQuery = totalQuery.lte("created_at", toDate.toISOString())
+        }
+        if (debouncedQuery) {
+          const q = debouncedQuery.replaceAll(",", " ")
+          totalQuery = totalQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+        }
+
         const { count: totalCount, error: totalError } = await totalQuery
         if (totalError) throw totalError
         setTotalParticipants(totalCount || 0)
@@ -260,6 +335,21 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
           .select("*", { count: "exact", head: true })
           .eq("won", true)
         if (campaignId) winnersQuery = winnersQuery.eq("campaign_id", campaignId)
+        
+        // Apply Filters to winners count
+        if (selectedCity) winnersQuery = winnersQuery.eq("city", selectedCity)
+        if (selectedAnimator) winnersQuery = winnersQuery.eq("name", selectedAnimator)
+        if (dateRange.from) winnersQuery = winnersQuery.gte("created_at", dateRange.from.toISOString())
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          winnersQuery = winnersQuery.lte("created_at", toDate.toISOString())
+        }
+        if (debouncedQuery) {
+          const q = debouncedQuery.replaceAll(",", " ")
+          winnersQuery = winnersQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+        }
+
         const { count: winnersCount, error: winnersError } = await winnersQuery
         if (winnersError) throw winnersError
         setTotalWinners(winnersCount || 0)
@@ -271,6 +361,23 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
 
         if (campaignId) query = query.eq("campaign_id", campaignId)
         if (winnersOnly) query = query.eq("won", true)
+        
+        // Apply Filters
+        if (selectedCity) {
+          query = query.eq("city", selectedCity)
+        }
+        if (selectedAnimator) {
+          query = query.eq("name", selectedAnimator)
+        }
+        if (dateRange.from) {
+          query = query.gte("created_at", dateRange.from.toISOString())
+        }
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          query = query.lte("created_at", toDate.toISOString())
+        }
+        
         if (debouncedQuery) {
           const q = debouncedQuery.replaceAll(",", " ")
           query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
@@ -295,7 +402,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
     }
 
     loadCountsAndPage()
-  }, [campaignId, debouncedQuery, pageIndex, pageSize, reloadKey, sortDesc, winnersOnly])
+  }, [campaignId, debouncedQuery, pageIndex, pageSize, reloadKey, sortDesc, winnersOnly, selectedCity, selectedAnimator, dateRange])
 
   const displayedParticipants = participants
 
@@ -312,10 +419,10 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-blue-100 text-blue-700 p-2">
+                        <div className="rounded-full bg-orange-100 text-orange-700 p-2">
                             <Users className="size-5" />
                         </div>
-                        <p className="text-3xl font-bold text-blue-600">{totalParticipants}</p>
+                        <p className="text-3xl font-bold text-orange-600">{totalParticipants}</p>
                     </div>
                     <Button
                       type="button"
@@ -360,14 +467,110 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
             <CardDescription>{totalParticipants} entrées au total</CardDescription>
             </CardHeader>
             <CardContent>
+            {/* Filters Section */}
+            <div className="flex flex-wrap gap-3 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex flex-col gap-1.5 min-w-[200px] flex-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Recherche</Label>
+                <div className="relative">
+                  <Input
+                    placeholder="Nom, code, ville..."
+                    value={participantQuery}
+                    onChange={(e) => setParticipantQuery(e.target.value)}
+                    className="pl-9 bg-white border-slate-200 focus:ring-orange-500"
+                  />
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 min-w-[160px] flex-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Ville</Label>
+                <div className="relative">
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full h-10 pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 appearance-none"
+                  >
+                    <option value="">Toutes les villes</option>
+                    {availableCities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 min-w-[160px] flex-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Animateur</Label>
+                <div className="relative">
+                  <select
+                    value={selectedAnimator}
+                    onChange={(e) => setSelectedAnimator(e.target.value)}
+                    className="w-full h-10 pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 appearance-none"
+                  >
+                    <option value="">Tous les animateurs</option>
+                    {availableAnimators.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 min-w-[200px] flex-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Période</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-white border-slate-200 h-10",
+                        !dateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>{format(dateRange.from, "dd MMM", { locale: fr })} - {format(dateRange.to, "dd MMM", { locale: fr })}</>
+                        ) : (
+                          format(dateRange.from, "dd MMM yyyy", { locale: fr })
+                        )
+                      ) : (
+                        <span>Toutes les dates</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={(newRange: any) => setDateRange({ from: newRange?.from, to: newRange?.to })}
+                      numberOfMonths={1}
+                      locale={fr}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-end gap-2 pt-5">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="h-10 w-10 border-slate-200"
+                  onClick={() => {
+                    setSelectedCity("")
+                    setSelectedAnimator("")
+                    setDateRange({ from: undefined, to: undefined })
+                    setParticipantQuery("")
+                  }}
+                  title="Réinitialiser les filtres"
+                >
+                  <X className="h-4 w-4 text-slate-500" />
+                </Button>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Input
-                  placeholder="Rechercher un nom ou un emplacement..."
-                  value={participantQuery}
-                  onChange={(e) => setParticipantQuery(e.target.value)}
-                  className="w-full sm:w-[320px]"
-                />
                 <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSortDesc((v) => !v)}>
                   <ArrowUpDown className="h-4 w-4" />
                   Date {sortDesc ? "desc" : "asc"}
