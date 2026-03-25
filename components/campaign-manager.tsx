@@ -23,6 +23,7 @@ import {
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, resetAllCampaignGifts, type Campaign, type CampaignTheme } from "@/app/actions/campaigns"
 import { CampaignGiftManager } from "@/components/campaign-gift-manager"
 import { ParticipantList } from "@/components/participant-list"
+import { CampaignStats } from "@/components/campaign-stats"
 import { createClient } from "@/lib/supabase/client"
 
 export function CampaignManager() {
@@ -287,6 +288,12 @@ export function CampaignManager() {
               className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
             >
               <Users className="mr-2 h-4 w-4" /> Participants
+            </TabsTrigger>
+            <TabsTrigger
+              value="stats"
+              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+            >
+              <BarChart3 className="mr-2 h-4 w-4" /> Statistiques
             </TabsTrigger>
           </TabsList>
           
@@ -587,6 +594,10 @@ export function CampaignManager() {
 
           <TabsContent value="participants">
             <ParticipantList campaignId={editingCampaign.id} />
+          </TabsContent>
+
+          <TabsContent value="stats">
+            <CampaignStats campaignId={editingCampaign.id} />
           </TabsContent>
         </Tabs>
 
