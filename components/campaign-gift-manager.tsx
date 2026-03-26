@@ -31,10 +31,11 @@ import { GiftLimitManager } from "@/components/gift-limit-manager"
 
 interface CampaignGiftManagerProps {
   campaignId: string
-  campaignName: string
+  campaignName?: string
+  readOnly?: boolean
 }
 
-export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftManagerProps) {
+export function CampaignGiftManager({ campaignId, campaignName, readOnly = false }: CampaignGiftManagerProps) {
   const [gifts, setGifts] = useState<Gift[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -220,16 +221,18 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-medium">Cadeaux de la campagne: {campaignName}</h3>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button className="w-full sm:w-auto" onClick={() => setShowAddForm(!showAddForm)}>
-            {showAddForm ? "Annuler" : <><Plus className="mr-2 h-4 w-4" /> Ajouter un cadeau</>}
-          </Button>
-          <Button className="w-full sm:w-auto" variant="outline" onClick={handleResetAllGifts} disabled={resettingAll}>
-            {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Réinitialiser tous les cadeaux
-          </Button>
-        </div>
+        <h3 className="text-lg font-medium">Cadeaux de la campagne{campaignName ? `: ${campaignName}` : ""}</h3>
+        {!readOnly && (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:w-auto" onClick={() => setShowAddForm(!showAddForm)}>
+              {showAddForm ? "Annuler" : <><Plus className="mr-2 h-4 w-4" /> Ajouter un cadeau</>}
+            </Button>
+            <Button className="w-full sm:w-auto" variant="outline" onClick={handleResetAllGifts} disabled={resettingAll}>
+              {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Réinitialiser tous les cadeaux
+            </Button>
+          </div>
+        )}
       </div>
 
       {showAddForm && (
@@ -419,6 +422,12 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
               <div className="text-sm text-slate-500">
                 Utilisés: {gift.current_winners} / {totalLabel}
               </div>
+              {typeof gift.all_time_hits === "number" ? (
+                <div className="text-xs text-slate-400">
+                  {gift.is_prize === false ? "Tirages (total)" : "Gagnants (total)"}:{" "}
+                  {gift.is_prize === false ? gift.all_time_hits : gift.all_time_winners ?? 0}
+                </div>
+              ) : null}
               {showProgress && (
                 <div
                   className="h-2 w-full rounded-full bg-slate-100 overflow-hidden"
@@ -434,31 +443,33 @@ export function CampaignGiftManager({ campaignId, campaignName }: CampaignGiftMa
                 </div>
               )}
               
-              <div className="flex flex-wrap gap-2 mt-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 text-xs min-w-[160px]">
-                      Stock établissement
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <GiftLimitManager campaignId={campaignId} giftId={gift.id} giftName={gift.name} scope="venue" onLimitUpdated={loadGifts} />
-                  </DialogContent>
-                </Dialog>
-                
-                <Button variant="outline" size="sm" className="w-8 px-0" onClick={() => openEditDialog(gift)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleDeleteGift(gift.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex-1 text-xs min-w-[160px]">
+                        Stock établissement
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <GiftLimitManager campaignId={campaignId} giftId={gift.id} giftName={gift.name} scope="venue" onLimitUpdated={loadGifts} />
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Button variant="outline" size="sm" className="w-8 px-0" onClick={() => openEditDialog(gift)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => handleDeleteGift(gift.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
           )

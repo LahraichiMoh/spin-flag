@@ -38,6 +38,10 @@ export interface Gift {
   available?: boolean // Computed field
   venue_total_max_winners?: number
   is_prize: boolean
+  all_time_hits?: number
+  all_time_winners?: number
+  replay_hits?: number
+  replay_winners?: number
 }
 
 function isMissingAccessColumnsError(err: unknown) {
@@ -271,7 +275,7 @@ export async function loginCampaignAccess(slug: string, username: string, passwo
       .select("id, name, slug, is_active")
       .eq("slug", slug)
       .eq("is_active", true)
-      .eq("access_username", username)
+      .ilike("access_username", username)
       .eq("access_password", password)
       .single()
 
@@ -364,11 +368,74 @@ export async function getCampaignGifts(campaignId: string) {
   const venueTotals = venueTotalsRes.success ? venueTotalsRes.data : new Map<string, number>()
   const cityTotals = cityTotalsRes.success ? cityTotalsRes.data : new Map<string, number>()
 
+  const { data: auth } = await supabase.auth.getUser()
+  const hasAuthUser = !!auth?.user
+  const teamCookie = (await cookies()).get("spin_team_access")
+  let hasTeamAccessForCampaign = false
+  if (teamCookie) {
+    try {
+      const parsed = JSON.parse(teamCookie.value) as { campaign_id?: string }
+      hasTeamAccessForCampaign = parsed?.campaign_id === campaignId
+    } catch {
+      hasTeamAccessForCampaign = false
+    }
+  }
+
+  const canReadHistory = hasAuthUser || hasTeamAccessForCampaign
+  const allTimeHits = new Map<string, number>()
+  const allTimeWinners = new Map<string, number>()
+  const replayHits = new Map<string, number>()
+  const replayWinners = new Map<string, number>()
+
+  if (canReadHistory && giftIds.length > 0) {
+    const service = createServiceClient()
+    const { data: campaignRow } = await service
+      .from("campaigns")
+      .select("theme")
+      .eq("id", campaignId)
+      .maybeSingle()
+
+    const replayStartedAtRaw = (campaignRow as any)?.theme?.replayStartedAt as string | undefined
+    const replayStartedAt =
+      replayStartedAtRaw && Number.isFinite(Date.parse(replayStartedAtRaw)) ? replayStartedAtRaw : undefined
+    const replayMs = replayStartedAt ? Date.parse(replayStartedAt) : undefined
+
+    const { data: spins } = await service
+      .from("participants")
+      .select("prize_id, won, created_at")
+      .eq("campaign_id", campaignId)
+      .in("prize_id", giftIds)
+      .not("prize_id", "is", null)
+
+    ;(spins || []).forEach((row: any) => {
+      const prizeId = row.prize_id as string | null
+      if (!prizeId) return
+      allTimeHits.set(prizeId, (allTimeHits.get(prizeId) || 0) + 1)
+      if (row.won === true) {
+        allTimeWinners.set(prizeId, (allTimeWinners.get(prizeId) || 0) + 1)
+      }
+
+      if (replayMs !== undefined) {
+        const createdMs = Date.parse(row.created_at as string)
+        if (Number.isFinite(createdMs) && createdMs >= replayMs) {
+          replayHits.set(prizeId, (replayHits.get(prizeId) || 0) + 1)
+          if (row.won === true) {
+            replayWinners.set(prizeId, (replayWinners.get(prizeId) || 0) + 1)
+          }
+        }
+      }
+    })
+  }
+
   return {
     success: true,
     data: gifts.map((g) => ({
       ...g,
       venue_total_max_winners: (cityTotals.get(g.id) || 0) > 0 ? cityTotals.get(g.id) || 0 : venueTotals.get(g.id) || 0,
+      all_time_hits: canReadHistory ? allTimeHits.get(g.id) || 0 : undefined,
+      all_time_winners: canReadHistory ? allTimeWinners.get(g.id) || 0 : undefined,
+      replay_hits: canReadHistory ? replayHits.get(g.id) || 0 : undefined,
+      replay_winners: canReadHistory ? replayWinners.get(g.id) || 0 : undefined,
     })) as Gift[],
   }
 }

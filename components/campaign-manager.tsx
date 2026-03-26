@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Plus, Trash2, Globe, Settings, Gift as GiftIcon, BarChart3, Palette, Save, Upload, ExternalLink, Users, Trophy } from "lucide-react"
+import { Loader2, Plus, Trash2, Globe, Settings, Gift as GiftIcon, BarChart3, Palette, Save, Upload, ExternalLink, Users, Trophy, Shield } from "lucide-react"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -24,12 +24,39 @@ import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, resetAllC
 import { CampaignGiftManager } from "@/components/campaign-gift-manager"
 import { ParticipantList } from "@/components/participant-list"
 import { CampaignStats } from "@/components/campaign-stats"
+import { CampaignTeamManager } from "@/components/campaign-team-manager"
 import { createClient } from "@/lib/supabase/client"
 
-export function CampaignManager() {
+interface CampaignManagerProps {
+  teamAccess?: {
+    id: string
+    username: string
+    campaign_id: string
+    permissions: {
+      can_view_participants: boolean
+      can_view_stats: boolean
+      can_view_gifts: boolean
+      can_edit_gifts: boolean
+    }
+    campaign_slug: string
+    campaign_name: string
+  }
+}
+
+export function CampaignManager({ teamAccess }: CampaignManagerProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  
+  // Auto-select campaign if team access is provided
+  useEffect(() => {
+    if (teamAccess && campaigns.length > 0) {
+      const campaign = campaigns.find(c => c.id === teamAccess.campaign_id)
+      if (campaign) {
+        setEditingCampaign(campaign)
+      }
+    }
+  }, [teamAccess, campaigns])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [locationCities, setLocationCities] = useState<Array<{ id: string; name: string }>>([])
   const [locationVenues, setLocationVenues] = useState<
@@ -249,356 +276,234 @@ export function CampaignManager() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <Button variant="outline" onClick={() => setEditingCampaign(null)} className="w-full sm:w-auto">← Retour</Button>
+            {!teamAccess && <Button variant="outline" onClick={() => setEditingCampaign(null)} className="w-full sm:w-auto">← Retour</Button>}
             <h2 className="text-2xl font-bold leading-tight">{editingCampaign.name}</h2>
           </div>
-          <Button
-            variant="outline"
-            onClick={handleResetAll}
-            disabled={resettingAll}
-            className="border-amber-200 text-amber-800 hover:bg-amber-50 w-full sm:w-auto"
-          >
-            {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Réinitialiser pour rejouer
-          </Button>
+          {!teamAccess && (
+            <Button
+              variant="outline"
+              onClick={handleResetAll}
+              disabled={resettingAll}
+              className="border-amber-200 text-amber-800 hover:bg-amber-50 w-full sm:w-auto"
+            >
+              {resettingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Réinitialiser pour rejouer
+            </Button>
+          )}
         </div>
 
-        <Tabs defaultValue="settings">
+        <Tabs
+          defaultValue={
+            teamAccess
+              ? teamAccess.permissions.can_view_participants
+                ? "participants"
+                : teamAccess.permissions.can_view_stats
+                  ? "stats"
+                  : teamAccess.permissions.can_view_gifts
+                    ? "gifts"
+                    : "participants"
+              : "settings"
+          }
+        >
           <TabsList className="h-12 w-full overflow-x-auto items-center gap-1 rounded-xl bg-slate-100 p-1 shadow-sm ring-1 ring-slate-200 justify-start">
-            <TabsTrigger
-              value="settings"
-              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
-            >
-              <Settings className="mr-2 h-4 w-4" /> Paramètres
-            </TabsTrigger>
-            <TabsTrigger
-              value="gifts"
-              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
-            >
-              <GiftIcon className="mr-2 h-4 w-4" /> Cadeaux
-            </TabsTrigger>
-            <TabsTrigger
-              value="venues"
-              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
-            >
-              <Globe className="mr-2 h-4 w-4" /> Établissements
-            </TabsTrigger>
-            <TabsTrigger
-              value="participants"
-              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
-            >
-              <Users className="mr-2 h-4 w-4" /> Participants
-            </TabsTrigger>
-            <TabsTrigger
-              value="stats"
-              className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
-            >
-              <BarChart3 className="mr-2 h-4 w-4" /> Statistiques
-            </TabsTrigger>
+            {!teamAccess && (
+              <TabsTrigger
+                value="settings"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <Settings className="mr-2 h-4 w-4" /> Paramètres
+              </TabsTrigger>
+            )}
+            {( !teamAccess || teamAccess.permissions.can_view_gifts ) && (
+              <TabsTrigger
+                value="gifts"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <GiftIcon className="mr-2 h-4 w-4" /> Cadeaux
+              </TabsTrigger>
+            )}
+            {!teamAccess && (
+              <TabsTrigger
+                value="venues"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <Globe className="mr-2 h-4 w-4" /> Établissements
+              </TabsTrigger>
+            )}
+            {( !teamAccess || teamAccess.permissions.can_view_participants ) && (
+              <TabsTrigger
+                value="participants"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <Users className="mr-2 h-4 w-4" /> Participants
+              </TabsTrigger>
+            )}
+            {( !teamAccess || teamAccess.permissions.can_view_stats ) && (
+              <TabsTrigger
+                value="stats"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" /> Statistiques
+              </TabsTrigger>
+            )}
+            {!teamAccess && (
+              <TabsTrigger
+                value="team"
+                className="flex-none rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900"
+              >
+                <Shield className="mr-2 h-4 w-4" /> Équipe
+              </TabsTrigger>
+            )}
           </TabsList>
           
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Paramètres de la campagne</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+          {!teamAccess && (
+            <TabsContent value="settings">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Paramètres de la campagne</CardTitle>
+                  <CardDescription>Modifiez les informations de base et l&apos;apparence.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label>Nom</Label>
-                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                      <Label>Nom</Label>
+                      <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Été 2024" />
                     </div>
                     <div className="space-y-2">
-                        <Label>Slug (URL)</Label>
-                        <Input value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} />
+                      <Label>Slug</Label>
+                      <Input value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} placeholder="ete-2024" />
                     </div>
                     <div className="col-span-2 space-y-2">
-                        <Label>Description</Label>
-                        <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                      <Label>Description</Label>
+                      <Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Description de la campagne" />
                     </div>
                     <div className="space-y-2">
-                        <Label>Utilisateur (Campagne)</Label>
-                        <Input value={formData.accessUsername} onChange={e => setFormData({...formData, accessUsername: e.target.value})} placeholder="ex: campagne1" />
+                      <Label>Utilisateur (Campagne)</Label>
+                      <Input value={formData.accessUsername} onChange={e => setFormData({...formData, accessUsername: e.target.value})} placeholder="ex: campagne1" />
                     </div>
                     <div className="space-y-2">
-                        <Label>Mot de passe (Campagne)</Label>
-                        <Input type="password" value={formData.accessPassword} onChange={e => setFormData({...formData, accessPassword: e.target.value})} placeholder="••••••••" />
+                      <Label>Mot de passe (Campagne)</Label>
+                      <Input type="password" value={formData.accessPassword} onChange={e => setFormData({...formData, accessPassword: e.target.value})} placeholder="Laisser vide pour ne pas changer" />
                     </div>
                     <div className="col-span-2 flex items-center gap-2 pt-2">
-                        <Checkbox
-                          id="campaign-active-edit"
-                          checked={formData.isActive}
-                          onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked === true })}
-                        />
-                        <Label htmlFor="campaign-active-edit">Campagne active (visible sur la page d&apos;accueil)</Label>
+                      <Checkbox
+                        id="campaign-active"
+                        checked={formData.isActive}
+                        onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked === true })}
+                      />
+                      <Label htmlFor="campaign-active">Campagne active (visible sur la page d&apos;accueil)</Label>
                     </div>
-                </div>
-                
-                <div className="space-y-4 border-t pt-4">
+                  </div>
+
+                  <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium flex items-center"><Palette className="mr-2 h-4 w-4" /> Apparence</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Couleur principale</Label>
-                            <div className="flex gap-2">
-                                <Input type="color" className="w-12 p-1" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} />
-                                <Input value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} />
-                            </div>
+                      <div className="space-y-2">
+                        <Label>Couleur principale</Label>
+                        <div className="flex gap-2">
+                          <Input type="color" className="w-12 p-1" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} />
+                          <Input value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} />
                         </div>
-                        <div className="space-y-2">
-                            <Label>Couleur secondaire</Label>
-                            <div className="flex gap-2">
-                                <Input type="color" className="w-12 p-1" value={formData.secondaryColor} onChange={e => setFormData({...formData, secondaryColor: e.target.value})} />
-                                <Input value={formData.secondaryColor} onChange={e => setFormData({...formData, secondaryColor: e.target.value})} />
-                            </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Couleur secondaire</Label>
+                        <div className="flex gap-2">
+                          <Input type="color" className="w-12 p-1" value={formData.secondaryColor} onChange={e => setFormData({...formData, secondaryColor: e.target.value})} />
+                          <Input value={formData.secondaryColor} onChange={e => setFormData({...formData, secondaryColor: e.target.value})} />
                         </div>
-                         <div className="space-y-2">
-                            <Label>URL du Logo</Label>
-                            <div className="flex gap-2">
-                                <Input value={formData.logoUrl} onChange={e => setFormData({...formData, logoUrl: e.target.value})} placeholder="/logo.png" />
-                                <input 
-                                  type="file" 
-                                  ref={logoInputRef} 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files?.[0]) handleUpload(e.target.files[0], 'logo')
-                                  }}
-                                />
-                                <Button 
-                                  type="button"
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => logoInputRef.current?.click()}
-                                  disabled={uploadingLogo}
-                                >
-                                  {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                            {formData.logoUrl && (
-                                <img src={formData.logoUrl} alt="Logo preview" className="h-16 object-contain border rounded bg-gray-50 mt-2" />
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label>URL de l&apos;arrière-plan</Label>
-                            <div className="flex gap-2">
-                                <Input value={formData.backgroundUrl} onChange={e => setFormData({...formData, backgroundUrl: e.target.value})} placeholder="/bg.jpg" />
-                                <input 
-                                  type="file" 
-                                  ref={bgInputRef} 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files?.[0]) handleUpload(e.target.files[0], 'bg')
-                                  }}
-                                />
-                                <Button 
-                                  type="button"
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => bgInputRef.current?.click()}
-                                  disabled={uploadingBg}
-                                >
-                                  {uploadingBg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                            {formData.backgroundUrl && (
-                                <img src={formData.backgroundUrl} alt="BG preview" className="h-16 w-full object-cover border rounded mt-2" />
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex justify-end">
-                    <Button onClick={handleSave} style={{ backgroundColor: formData.primaryColor, color: "white" }}>
-                      <Save className="mr-2 h-4 w-4" /> Enregistrer les modifications
-                    </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="gifts">
-            <CampaignGiftManager campaignId={editingCampaign.id} campaignName={editingCampaign.name} />
-          </TabsContent>
-
-          <TabsContent value="venues">
-            <Card>
-              <CardHeader>
-                <CardTitle>Poste / Point de vente</CardTitle>
-                <CardDescription>Créez des établissements et associez-les à une ville.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Ville</Label>
-                    <select
-                      value={locationCityId}
-                      onChange={(e) => setLocationCityId(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    >
-                      <option value="">Choisir une ville</option>
-                      {locationCities.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Nom (Poste / Point de vente)</Label>
-                    <Input value={newVenueName} onChange={(e) => setNewVenueName(e.target.value)} placeholder="Ex: Point de vente Centre" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Stock (optionnel)</Label>
-                    <Input type="number" min="0" value={newVenueStock} onChange={(e) => setNewVenueStock(e.target.value)} />
-                  </div>
-
-                  <div className="flex items-end justify-end">
-                    <Button
-                      type="button"
-                      className="bg-emerald-600 text-white hover:bg-emerald-700"
-                      disabled={
-                        savingVenue ||
-                        !locationCityId ||
-                        !newVenueName.trim()
-                      }
-                      onClick={async () => {
-                        const supabase = createClient()
-                        setSavingVenue(true)
-                        try {
-                          const { error: venueError } = await supabase.from("venues").insert({
-                            city_id: locationCityId,
-                            campaign_id: editingCampaign.id,
-                            name: newVenueName.trim(),
-                            stock: parseInt(newVenueStock) || 0,
-                          })
-                          if (venueError) {
-                            toast.error(venueError.message || "Erreur lors de la création")
-                            return
-                          }
-
-                          const { data: venuesData, error: venuesError } = await supabase
-                            .from("venues")
-                            .select("id, name, stock, city_id, campaign_id, city:cities ( id, name )")
-                            .eq("campaign_id", editingCampaign.id)
-                            .order("name")
-                          if (venuesError) {
-                            toast.error(venuesError.message || "Erreur lors du chargement des établissements")
-                          }
-                          setLocationVenues((venuesData || []) as any)
-
-                          setNewVenueName("")
-                          setNewVenueStock("0")
-                          toast.success("Établissement créé")
-                        } catch (err) {
-                          const msg =
-                            (typeof (err as any)?.message === "string" && (err as any).message) ||
-                            "Erreur lors de la création"
-                          toast.error(msg)
-                        } finally {
-                          setSavingVenue(false)
-                        }
-                      }}
-                    >
-                      {savingVenue ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Créer
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Liste</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={async () => {
-                        const supabase = createClient()
-                        const { data, error } = await supabase
-                          .from("venues")
-                          .select("id, name, stock, city_id, campaign_id, city:cities ( id, name )")
-                          .eq("campaign_id", editingCampaign.id)
-                          .order("name")
-                        if (error) toast.error(error.message || "Erreur lors du chargement des établissements")
-                        setLocationVenues((data || []) as any)
-                      }}
-                    >
-                      Rafraîchir
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {locationVenues
-                      .filter((v) => (locationCityId ? v.city_id === locationCityId : true))
-                      .map((v) => (
-                        <div key={v.id} className="flex items-center justify-between border rounded-lg p-3 bg-slate-50">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-slate-800">
-                              {v.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {v.city?.name || "-"}
-                            </span>
-                            <span className="text-xs text-slate-500">Stock: {v.stock ?? 0}</span>
-                          </div>
-                          <Button type="button" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteVenueId(v.id)}>
-                            <Trash2 className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>URL du Logo</Label>
+                        <div className="flex gap-2">
+                          <Input value={formData.logoUrl} onChange={e => setFormData({...formData, logoUrl: e.target.value})} placeholder="/logo.png" />
+                          <input
+                            type="file"
+                            ref={logoInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) handleUpload(e.target.files[0], 'logo')
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={uploadingLogo}
+                          >
+                            {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                           </Button>
                         </div>
-                      ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>URL de l&apos;arrière-plan</Label>
+                        <div className="flex gap-2">
+                          <Input value={formData.backgroundUrl} onChange={e => setFormData({...formData, backgroundUrl: e.target.value})} placeholder="/bg.jpg" />
+                          <input
+                            type="file"
+                            ref={bgInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) handleUpload(e.target.files[0], 'bg')
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => bgInputRef.current?.click()}
+                            disabled={uploadingBg}
+                          >
+                            {uploadingBg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {locationVenues.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center">Aucun établissement.</p>
-                  )}
-                </div>
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={handleSave}>Enregistrer les modifications</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
-                <AlertDialog open={!!deleteVenueId} onOpenChange={(open) => !open && setDeleteVenueId(null)}>
-                  <AlertDialogContent className="bg-white dark:bg-slate-900">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer l&apos;établissement ?</AlertDialogTitle>
-                      <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-red-600 hover:bg-red-700"
-                        onClick={async () => {
-                          if (!deleteVenueId) return
-                          const supabase = createClient()
-                          const { error } = await supabase
-                            .from("venues")
-                            .delete()
-                            .eq("id", deleteVenueId)
-                            .eq("campaign_id", editingCampaign.id)
-                          if (error) {
-                            toast.error(error.message)
-                            setDeleteVenueId(null)
-                            return
-                          }
-                          setLocationVenues((prev) => prev.filter((x) => x.id !== deleteVenueId))
-                          setDeleteVenueId(null)
-                          toast.success("Établissement supprimé")
-                        }}
-                      >
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {( !teamAccess || teamAccess.permissions.can_view_gifts ) && (
+            <TabsContent value="gifts">
+              <CampaignGiftManager 
+                campaignId={editingCampaign.id} 
+                campaignName={editingCampaign.name}
+                readOnly={teamAccess && !teamAccess.permissions.can_edit_gifts} 
+              />
+            </TabsContent>
+          )}
 
-          <TabsContent value="participants">
-            <ParticipantList campaignId={editingCampaign.id} />
-          </TabsContent>
+          {!teamAccess && (
+            <TabsContent value="venues">
+              <CampaignVenueManager campaignId={editingCampaign.id} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="stats">
-            <CampaignStats campaignId={editingCampaign.id} />
-          </TabsContent>
+          {( !teamAccess || teamAccess.permissions.can_view_participants ) && (
+            <TabsContent value="participants">
+              <ParticipantList campaignId={editingCampaign.id} isTeamAccess={!!teamAccess} />
+            </TabsContent>
+          )}
+
+          {( !teamAccess || teamAccess.permissions.can_view_stats ) && (
+            <TabsContent value="stats">
+              <CampaignStats campaignId={editingCampaign.id} />
+            </TabsContent>
+          )}
+
+          {!teamAccess && (
+            <TabsContent value="team">
+              <CampaignTeamManager campaignId={editingCampaign.id} campaignName={editingCampaign.name} />
+            </TabsContent>
+          )}
         </Tabs>
 
         <AlertDialog open={confirmResetAll} onOpenChange={setConfirmResetAll}>
@@ -821,6 +726,143 @@ export function CampaignManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+function CampaignVenueManager({ campaignId }: { campaignId: string }) {
+  const [cities, setCities] = useState<Array<{ id: string; name: string }>>([])
+  const [venues, setVenues] = useState<Array<any>>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  
+  const [cityId, setCityId] = useState("")
+  const [name, setName] = useState("")
+  const [type, setType] = useState<"restau" | "bar" | "point de vente">("bar")
+  const [stock, setStock] = useState("0")
+
+  useEffect(() => {
+    loadData()
+  }, [campaignId])
+
+  const loadData = async () => {
+    setLoading(true)
+    const supabase = createClient()
+    const { data: citiesData } = await supabase.from("cities").select("id, name").order("name")
+    setCities(citiesData || [])
+
+    const { data: venuesData } = await supabase
+      .from("venues")
+      .select("*, city:cities ( id, name )")
+      .eq("campaign_id", campaignId)
+      .order("name")
+    setVenues(venuesData || [])
+    setLoading(false)
+  }
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cityId || !name) return
+    setSaving(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from("venues")
+      .insert([{
+        name,
+        type,
+        stock: parseInt(stock) || 0,
+        city_id: cityId,
+        campaign_id: campaignId
+      }])
+      .select("*, city:cities ( id, name )")
+      .single()
+
+    if (error) {
+      toast.error("Erreur: " + error.message)
+    } else {
+      setVenues([...venues, data])
+      setName("")
+      setStock("0")
+      toast.success("Établissement ajouté")
+    }
+    setSaving(true)
+    setSaving(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from("venues").delete().eq("id", id)
+    if (error) {
+      toast.error("Erreur: " + error.message)
+    } else {
+      setVenues(venues.filter(v => v.id !== id))
+      toast.success("Établissement supprimé")
+    }
+  }
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ajouter un établissement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2">
+              <Label>Ville</Label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={cityId}
+                onChange={e => setCityId(e.target.value)}
+                required
+              >
+                <option value="">Sélectionner une ville</option>
+                {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Nom</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nom de l'établissement" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={type}
+                onChange={e => setType(e.target.value as any)}
+              >
+                <option value="bar">Bar</option>
+                <option value="restau">Restau</option>
+                <option value="point de vente">Point de vente</option>
+              </select>
+            </div>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Ajouter
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {venues.map(venue => (
+          <Card key={venue.id}>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-base">{venue.name}</CardTitle>
+                  <CardDescription>{venue.city?.name} • {venue.type}</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(venue.id)} className="text-red-500">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

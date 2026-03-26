@@ -12,6 +12,7 @@ import { fr } from "date-fns/locale"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { countCampaignParticipantsForExport, getCampaignParticipantFilterOptions, getCampaignParticipantsExportChunk, getCampaignParticipantsPage } from "@/app/actions/admin-campaign"
 
 interface Gift {
   id: string
@@ -41,9 +42,10 @@ interface Participant {
 interface ParticipantListProps {
   campaignId?: string
   onlyWinners?: boolean
+  isTeamAccess?: boolean
 }
 
-export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProps) {
+export function ParticipantList({ campaignId, onlyWinners, isTeamAccess }: ParticipantListProps) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [prizeMap, setPrizeMap] = useState<{ [key: string]: Gift }>({})
   const [loading, setLoading] = useState(true)
@@ -86,36 +88,17 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   useEffect(() => {
     const loadGiftsAndFilters = async () => {
       try {
-        const supabase = createClient()
-
-        // Get gifts (needed for prize names)
-        let giftsQuery = supabase.from("gifts").select("id, name, image_url")
-        if (campaignId) {
-            giftsQuery = giftsQuery.eq("campaign_id", campaignId)
-        }
-        const { data: giftsData, error: giftsError } = await giftsQuery
-        if (giftsError) throw giftsError
+        if (!campaignId) return
+        const res = await getCampaignParticipantFilterOptions(campaignId)
+        if (!res.success) throw new Error((res as any).error || "Failed to load filters")
 
         const prizeMapTemp: { [key: string]: Gift } = {}
-        giftsData?.forEach((gift) => {
+        res.data.gifts.forEach((gift) => {
           prizeMapTemp[gift.id] = gift
         })
         setPrizeMap(prizeMapTemp)
-
-        // Fetch unique cities and animators for filtering
-        let filterQuery = supabase.from("participants").select("city, name")
-        if (campaignId) {
-          filterQuery = filterQuery.eq("campaign_id", campaignId)
-        }
-        const { data: filterData, error: filterError } = await filterQuery
-        if (filterError) throw filterError
-
-        if (filterData) {
-          const cities = Array.from(new Set(filterData.map(p => p.city).filter(Boolean))) as string[]
-          const animators = Array.from(new Set(filterData.map(p => p.name).filter(Boolean))) as string[]
-          setAvailableCities(cities.sort())
-          setAvailableAnimators(animators.sort())
-        }
+        setAvailableCities(res.data.cities)
+        setAvailableAnimators(res.data.animators)
       } catch (error) {
         console.error("Error loading filters:", error)
       }
@@ -125,6 +108,7 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
   }, [campaignId])
 
   useEffect(() => {
+    if (isTeamAccess) return
     const supabase = createClient()
     const channel = supabase
       .channel("participants-realtime-list")
@@ -182,62 +166,43 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
     const setExporting = options.winnersOnly ? setExportingWinners : setExportingAll
     setExporting(true)
     try {
-      const supabase = createClient()
-
-      let countQuery = supabase
-        .from("participants")
-        .select("*", { count: "exact", head: true })
-      if (campaignId) countQuery = countQuery.eq("campaign_id", campaignId)
-      if (options.winnersOnly) countQuery = countQuery.eq("won", true)
-      
-      // Apply same filters to export
-      if (selectedCity) countQuery = countQuery.eq("city", selectedCity)
-      if (selectedAnimator) countQuery = countQuery.eq("name", selectedAnimator)
-      if (dateRange.from) countQuery = countQuery.gte("created_at", dateRange.from.toISOString())
+      if (!campaignId) return
+      const rangePayload: { from?: string; to?: string } = {}
+      if (dateRange.from) rangePayload.from = dateRange.from.toISOString()
       if (dateRange.to) {
         const toDate = new Date(dateRange.to)
         toDate.setHours(23, 59, 59, 999)
-        countQuery = countQuery.lte("created_at", toDate.toISOString())
+        rangePayload.to = toDate.toISOString()
       }
-      if (debouncedQuery) {
-        const q = debouncedQuery.replaceAll(",", " ")
-        countQuery = countQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
-      }
-      
-      const { count, error: countError } = await countQuery
-      if (countError) throw countError
-      const total = count || 0
+
+      const countRes = await countCampaignParticipantsForExport({
+        campaignId,
+        winnersOnly: options.winnersOnly,
+        city: selectedCity || undefined,
+        animator: selectedAnimator || undefined,
+        q: debouncedQuery || undefined,
+        range: rangePayload,
+      })
+      if (!countRes.success) throw new Error(countRes.error || "Count failed")
+      const total = countRes.data.total
 
       const chunkSize = 1000
       const allRows: any[] = []
       for (let offset = 0; offset < total; offset += chunkSize) {
-        let query = supabase
-          .from("participants")
-          .select("name, code, city, prize_id, created_at, participant_details(full_name, phone, gender, age_range, address, usual_product)")
-          .order("created_at", { ascending: false })
-          .range(offset, offset + chunkSize - 1)
-
-        if (campaignId) query = query.eq("campaign_id", campaignId)
-        if (options.winnersOnly) query = query.eq("won", true)
-        
-        // Apply same filters to rows fetch
-        if (selectedCity) query = query.eq("city", selectedCity)
-        if (selectedAnimator) query = query.eq("name", selectedAnimator)
-        if (dateRange.from) query = query.gte("created_at", dateRange.from.toISOString())
-        if (dateRange.to) {
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          query = query.lte("created_at", toDate.toISOString())
-        }
-        if (debouncedQuery) {
-          const q = debouncedQuery.replaceAll(",", " ")
-          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
-        }
-
-        const { data, error } = await query
-        if (error) throw error
-        allRows.push(...(data || []))
-        if (!data || data.length < chunkSize) break
+        const rowsRes = await getCampaignParticipantsExportChunk({
+          campaignId,
+          winnersOnly: options.winnersOnly,
+          offset,
+          limit: chunkSize,
+          city: selectedCity || undefined,
+          animator: selectedAnimator || undefined,
+          q: debouncedQuery || undefined,
+          range: rangePayload,
+        })
+        if (!rowsRes.success) throw new Error(rowsRes.error || "Export fetch failed")
+        const rows = rowsRes.data.rows || []
+        allRows.push(...rows)
+        if (rows.length < chunkSize) break
       }
 
       const columns = [
@@ -308,93 +273,32 @@ export function ParticipantList({ campaignId, onlyWinners }: ParticipantListProp
     const loadCountsAndPage = async () => {
       setLoading(true)
       try {
-        const supabase = createClient()
-
-        let totalQuery = supabase
-          .from("participants")
-          .select("*", { count: "exact", head: true })
-        if (campaignId) totalQuery = totalQuery.eq("campaign_id", campaignId)
-        
-        // Apply Filters to total count
-        if (selectedCity) totalQuery = totalQuery.eq("city", selectedCity)
-        if (selectedAnimator) totalQuery = totalQuery.eq("name", selectedAnimator)
-        if (dateRange.from) totalQuery = totalQuery.gte("created_at", dateRange.from.toISOString())
+        if (!campaignId) return
+        const rangePayload: { from?: string; to?: string } = {}
+        if (dateRange.from) rangePayload.from = dateRange.from.toISOString()
         if (dateRange.to) {
           const toDate = new Date(dateRange.to)
           toDate.setHours(23, 59, 59, 999)
-          totalQuery = totalQuery.lte("created_at", toDate.toISOString())
-        }
-        if (debouncedQuery) {
-          const q = debouncedQuery.replaceAll(",", " ")
-          totalQuery = totalQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
+          rangePayload.to = toDate.toISOString()
         }
 
-        const { count: totalCount, error: totalError } = await totalQuery
-        if (totalError) throw totalError
-        setTotalParticipants(totalCount || 0)
+        const res = await getCampaignParticipantsPage({
+          campaignId,
+          winnersOnly,
+          sortDesc,
+          pageIndex,
+          pageSize,
+          city: selectedCity || undefined,
+          animator: selectedAnimator || undefined,
+          q: debouncedQuery || undefined,
+          range: rangePayload,
+        })
+        if (!res.success) throw new Error(res.error || "Failed to load participants")
 
-        let winnersQuery = supabase
-          .from("participants")
-          .select("*", { count: "exact", head: true })
-          .eq("won", true)
-        if (campaignId) winnersQuery = winnersQuery.eq("campaign_id", campaignId)
-        
-        // Apply Filters to winners count
-        if (selectedCity) winnersQuery = winnersQuery.eq("city", selectedCity)
-        if (selectedAnimator) winnersQuery = winnersQuery.eq("name", selectedAnimator)
-        if (dateRange.from) winnersQuery = winnersQuery.gte("created_at", dateRange.from.toISOString())
-        if (dateRange.to) {
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          winnersQuery = winnersQuery.lte("created_at", toDate.toISOString())
-        }
-        if (debouncedQuery) {
-          const q = debouncedQuery.replaceAll(",", " ")
-          winnersQuery = winnersQuery.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
-        }
-
-        const { count: winnersCount, error: winnersError } = await winnersQuery
-        if (winnersError) throw winnersError
-        setTotalWinners(winnersCount || 0)
-
-        let query = supabase
-          .from("participants")
-          .select("*, participant_details(full_name, phone, gender, age_range, address, usual_product)", { count: "exact" })
-          .order("created_at", { ascending: !sortDesc })
-
-        if (campaignId) query = query.eq("campaign_id", campaignId)
-        if (winnersOnly) query = query.eq("won", true)
-        
-        // Apply Filters
-        if (selectedCity) {
-          query = query.eq("city", selectedCity)
-        }
-        if (selectedAnimator) {
-          query = query.eq("name", selectedAnimator)
-        }
-        if (dateRange.from) {
-          query = query.gte("created_at", dateRange.from.toISOString())
-        }
-        if (dateRange.to) {
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          query = query.lte("created_at", toDate.toISOString())
-        }
-        
-        if (debouncedQuery) {
-          const q = debouncedQuery.replaceAll(",", " ")
-          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,city.ilike.%${q}%`)
-        }
-
-        const from = pageIndex * pageSize
-        const to = from + pageSize - 1
-        query = query.range(from, to)
-
-        const { data, count, error } = await query
-        if (error) throw error
-
-        setParticipants((data || []) as Participant[])
-        setMatchingTotal(count || 0)
+        setParticipants(res.data.participants as Participant[])
+        setMatchingTotal(res.data.matchingTotal)
+        setTotalParticipants(res.data.totalParticipants)
+        setTotalWinners(res.data.totalWinners)
       } catch (error) {
         console.error("Error loading data:", error)
         setParticipants([])

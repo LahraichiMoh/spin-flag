@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { getCampaignStatsRows } from "@/app/actions/admin-campaign"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -46,31 +46,18 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
 
     const fetchData = async () => {
       setLoading(true)
-      const supabase = createClient()
       
-      // Fetch only participants who have filled the details form (inner join)
-      let query = supabase
-        .from("participants")
-        .select("created_at, city, participant_details!inner(gender)")
-        .eq("campaign_id", campaignId)
-
-      if (range.from) {
-        query = query.gte("created_at", range.from.toISOString())
-      }
+      const rangePayload: { from?: string; to?: string } = {}
+      if (range.from) rangePayload.from = range.from.toISOString()
       if (range.to) {
-        // Set end of day for 'to' date
         const toDate = new Date(range.to)
         toDate.setHours(23, 59, 59, 999)
-        query = query.lte("created_at", toDate.toISOString())
+        rangePayload.to = toDate.toISOString()
       }
 
-      const { data: participants, error } = await query
-
-      if (error) {
-        console.error("Error fetching stats:", error)
-      } else {
-        setData(participants || [])
-      }
+      const res = await getCampaignStatsRows({ campaignId, range: rangePayload })
+      if (res.success) setData(res.data.rows || [])
+      else console.error("Error fetching stats:", res.error)
       setLoading(false)
     }
 
