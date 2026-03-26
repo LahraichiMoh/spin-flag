@@ -66,14 +66,20 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
 
   // Process data for charts
   const stats = useMemo(() => {
-    const dailyMap: Record<string, number> = {}
+    const dailyMap: Record<string, { dateObj: Date; count: number }> = {}
     const cityMap: Record<string, number> = {}
     const genderMap: Record<string, number> = { "Masculin": 0, "Féminin": 0 }
 
     data.forEach((p) => {
       // Daily stats
-      const date = new Date(p.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
-      dailyMap[date] = (dailyMap[date] || 0) + 1
+      // Use YYYY-MM-DD as key for proper uniqueness and sorting
+      const dateObj = new Date(p.created_at)
+      const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
+      
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = { dateObj, count: 0 }
+      }
+      dailyMap[dateKey].count++
 
       // City stats
       const city = p.city || "Inconnu"
@@ -87,7 +93,11 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
     })
 
     const sortedDailyData = Object.entries(dailyMap)
-      .map(([name, total]) => ({ name, total }))
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+      .map(([_, { dateObj, count }]) => ({
+        name: dateObj.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
+        total: count
+      }))
     
     const cityData = Object.entries(cityMap).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
     const genderData = Object.entries(genderMap).filter(([_, total]) => total > 0).map(([name, value]) => ({ name, value }))

@@ -194,16 +194,34 @@ export async function getCampaignStatsRows(params: { campaignId: string; range?:
   await assertCampaignAccess(params.campaignId, "stats")
   const service = createServiceClient()
 
-  let query = service
-    .from("participants")
-    .select("created_at, city, participant_details(gender)")
-    .eq("campaign_id", params.campaignId)
+  let allRows: any[] = []
+  let offset = 0
+  const limit = 1000
+  let hasMore = true
 
-  query = applyDateRange(query, params.range)
+  while (hasMore) {
+    let query = service
+      .from("participants")
+      .select("created_at, city, participant_details(gender)")
+      .eq("campaign_id", params.campaignId)
 
-  const { data, error } = await query
-  if (error) return { success: false as const, error: error.message }
+    query = applyDateRange(query, params.range)
+    query = query.range(offset, offset + limit - 1)
 
-  return { success: true as const, data: { rows: (data || []) as any[] } }
+    const { data, error } = await query
+    if (error) return { success: false as const, error: error.message }
+
+    if (data && data.length > 0) {
+      allRows = [...allRows, ...data]
+      offset += limit
+      if (data.length < limit) {
+        hasMore = false
+      }
+    } else {
+      hasMore = false
+    }
+  }
+
+  return { success: true as const, data: { rows: allRows } }
 }
 

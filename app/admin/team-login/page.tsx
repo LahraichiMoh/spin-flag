@@ -62,7 +62,7 @@ export default function TeamLoginPage() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="votre.nom"
+                placeholder="votre email"
                 required
               />
             </div>
