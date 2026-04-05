@@ -202,7 +202,7 @@ export async function getCampaignStatsRows(params: { campaignId: string; range?:
   while (hasMore) {
     let query = service
       .from("participants")
-      .select("created_at, city, participant_details(gender)")
+      .select("created_at, city, participant_details(gender, age_range)")
       .eq("campaign_id", params.campaignId)
 
     query = applyDateRange(query, params.range)
@@ -224,4 +224,3 @@ export async function getCampaignStatsRows(params: { campaignId: string; range?:
 
   return { success: true as const, data: { rows: allRows } }
 }
-

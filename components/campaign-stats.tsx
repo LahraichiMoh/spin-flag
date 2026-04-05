@@ -12,6 +12,7 @@ import { fr } from "date-fns/locale"
 import {
   BarChart,
   Bar,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -67,8 +68,9 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
   // Process data for charts
   const stats = useMemo(() => {
     const dailyMap: Record<string, { dateObj: Date; count: number }> = {}
-    const cityMap: Record<string, number> = {}
+    const cityGenderMap: Record<string, { Masculin: number; Féminin: number }> = {}
     const genderMap: Record<string, number> = { "Masculin": 0, "Féminin": 0 }
+    const ageGenderMap: Record<string, { Masculin: number; Féminin: number }> = {}
 
     data.forEach((p) => {
       // Daily stats
@@ -81,14 +83,24 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
       }
       dailyMap[dateKey].count++
 
-      // City stats
-      const city = p.city || "Inconnu"
-      cityMap[city] = (cityMap[city] || 0) + 1
-
       // Gender stats
-      const gender = p.participant_details?.[0]?.gender
+      const gender = p.participant_details?.[0]?.gender as "Masculin" | "Féminin" | undefined
       if (gender === "Masculin" || gender === "Féminin") {
         genderMap[gender]++
+      }
+
+      // City stats (split by gender)
+      const city = p.city || "Inconnu"
+      if (!cityGenderMap[city]) cityGenderMap[city] = { Masculin: 0, Féminin: 0 }
+      if (gender === "Masculin") cityGenderMap[city].Masculin++
+      if (gender === "Féminin") cityGenderMap[city].Féminin++
+
+      // Age stats (split by gender)
+      const ageRange = p.participant_details?.[0]?.age_range
+      if (ageRange && (gender === "Masculin" || gender === "Féminin")) {
+        if (!ageGenderMap[ageRange]) ageGenderMap[ageRange] = { Masculin: 0, Féminin: 0 }
+        if (gender === "Masculin") ageGenderMap[ageRange].Masculin++
+        if (gender === "Féminin") ageGenderMap[ageRange].Féminin++
       }
     })
 
@@ -99,10 +111,24 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
         total: count
       }))
     
-    const cityData = Object.entries(cityMap).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+    const cityData = Object.entries(cityGenderMap)
+      .map(([name, v]) => ({ name, Masculin: v.Masculin, Féminin: v.Féminin, total: v.Masculin + v.Féminin }))
+      .sort((a, b) => b.total - a.total)
     const genderData = Object.entries(genderMap).filter(([_, total]) => total > 0).map(([name, value]) => ({ name, value }))
 
-    return { dailyData: sortedDailyData, cityData, genderData }
+    const ageOrder = ["18-25", "26-35", "36-45", "46-55", "55+"]
+    const ageData = Object.entries(ageGenderMap)
+      .sort(([a], [b]) => {
+        const ia = ageOrder.indexOf(a)
+        const ib = ageOrder.indexOf(b)
+        if (ia === -1 && ib === -1) return a.localeCompare(b)
+        if (ia === -1) return 1
+        if (ib === -1) return -1
+        return ia - ib
+      })
+      .map(([name, v]) => ({ name, Masculin: v.Masculin, Féminin: v.Féminin }))
+
+    return { dailyData: sortedDailyData, cityData, genderData, ageData }
   }, [data])
 
   const GENDER_COLORS: Record<string, string> = {
@@ -214,14 +240,14 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Participation par jour */}
-            <Card className="shadow-sm border-slate-200">
+            <Card className="lg:col-span-2 shadow-sm border-slate-200">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-orange-500" />
                   Participations par jour
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[320px]">
                 {stats.dailyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stats.dailyData}>
@@ -278,6 +304,36 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
               </CardContent>
             </Card>
 
+            {/* Répartition par âge (H/F) */}
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-orange-500" />
+                  Répartition par âge (H/F)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                {stats.ageData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.ageData} layout="vertical" margin={{ left: 30, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="name" type="category" fontSize={12} tickLine={false} axisLine={false} width={70} />
+                      <Tooltip
+                        cursor={{ fill: "#f1f5f9" }}
+                        contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                      />
+                      <Legend verticalAlign="bottom" height={28} />
+                      <Bar dataKey="Masculin" stackId="age" fill="#000000" barSize={18} />
+                      <Bar dataKey="Féminin" stackId="age" fill="#ff7900" barSize={18} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-slate-400 text-sm">Aucune donnée d'âge disponible</div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Top Villes */}
             <Card className="lg:col-span-2 shadow-sm border-slate-200">
               <CardHeader>
@@ -297,7 +353,17 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
                         cursor={{ fill: '#f1f5f9' }}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                       />
-                      <Bar dataKey="total" fill="#000000" radius={[0, 4, 4, 0]} barSize={20} label={{ position: 'right', fontSize: 12, fill: '#64748b' }} />
+                      <Legend verticalAlign="bottom" height={28} />
+                      <Bar dataKey="Masculin" stackId="city" fill="#000000" radius={[0, 0, 0, 0]} barSize={20} />
+                      <Bar
+                        dataKey="Féminin"
+                        stackId="city"
+                        fill="#ff7900"
+                        radius={[0, 4, 4, 0]}
+                        barSize={20}
+                      >
+                        <LabelList dataKey="total" position="right" fontSize={12} fill="#64748b" />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
