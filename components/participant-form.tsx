@@ -133,14 +133,86 @@ export function ParticipantForm({ campaignName, primaryColor, logoUrl, onSubmit 
 
           <div className="space-y-1.5">
             <Label htmlFor="usualProduct" className="text-slate-700 font-semibold">Produit habituel</Label>
-            <Input
+            <select
               id="usualProduct"
-              placeholder="Ex: Orange Money, Recharge..."
               value={formData.usualProduct}
               onChange={(e) => handleChange("usualProduct", e.target.value)}
-              className="border-slate-200 focus:ring-2 focus:ring-orange-500"
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-orange-500"
               required
-            />
+            >
+              <option value="">Choisir</option>
+
+              <optgroup label="Services">
+                <option value="Alimenter mon solde">Alimenter mon solde</option>
+                <option value="Envoyé de l'argent vers un mobile">Envoyé de l'argent vers un mobile</option>
+                <option value="Acheter une recharge téléphonique">Acheter une recharge téléphonique</option>
+                <option value="Payer une facture Orange">Payer une facture Orange</option>
+                <option value="Payer un commerçant">Payer un commerçant</option>
+                <option value="Retraits d'argent">Retraits d'argent</option>
+                <option value="Virements">Virements</option>
+                <option value="Fatourati">Fatourati</option>
+              </optgroup>
+
+              <optgroup label="Autoroute / Factures">
+                <option value="Autoroute du Maroc">Autoroute du Maroc</option>
+                <option value="IAM FACTURES">IAM FACTURES</option>
+                <option value="INWI FACTURES">INWI FACTURES</option>
+              </optgroup>
+
+              <optgroup label="EAU ET ÉLECTRICITÉ">
+                <option value="AMENDIS TANGER">AMENDIS TANGER</option>
+                <option value="AMENDIS TETOUAN">AMENDIS TETOUAN</option>
+                <option value="ONEE-BE">ONEE-BE</option>
+                <option value="REDAL">REDAL</option>
+                <option value="SRM BENI MELLAL KHENIFRA">SRM BENI MELLAL KHENIFRA</option>
+                <option value="SRM CASABLANCA SETTAT">SRM CASABLANCA SETTAT</option>
+                <option value="SRM DAKHLA OUED EDFAHAB">SRM DAKHLA OUED EDFAHAB</option>
+                <option value="SRM FES MEKNES">SRM FES MEKNES</option>
+                <option value="SRM GUELMIM OUED NOUN">SRM GUELMIM OUED NOUN</option>
+                <option value="SRM L'ORIENTAL">SRM L'ORIENTAL</option>
+                <option value="SRM LAAYOUNE SAKIA EL HAMRA">SRM LAAYOUNE SAKIA EL HAMRA</option>
+                <option value="SRM MARRAKECH SAFI">SRM MARRAKECH SAFI</option>
+                <option value="SRM RABAT SALE KENITRA">SRM RABAT SALE KENITRA</option>
+                <option value="SRM SOUS MASSA">SRM SOUS MASSA</option>
+                <option value="SRM TANGER TETOUAN ALHOICEIMA">SRM TANGER TETOUAN ALHOICEIMA</option>
+              </optgroup>
+
+              <optgroup label="ASSOCIATION">
+                <option value="AFRIQUIA">AFRIQUIA</option>
+                <option value="AVITO">AVITO</option>
+                <option value="BEIN">BEIN</option>
+                <option value="MARKOUB">MARKOUB</option>
+                <option value="VIVO ENERGY">VIVO ENERGY</option>
+                <option value="WINXO">WINXO</option>
+              </optgroup>
+
+              <optgroup label="ACHAT INTERNET">
+                <option value="AMH-AMICALE MAROCAINE DES HANDICAPÉS">AMH-AMICALE MAROCAINE DES HANDICAPÉS</option>
+                <option value="BAYT MAL AL SODS">BAYT MAL AL SODS</option>
+                <option value="COLLECTE DONS SEISME MAROC 2023">COLLECTE DONS SEISME MAROC 2023</option>
+                <option value="FONDATION HASSAN2">FONDATION HASSAN2</option>
+              </optgroup>
+
+              <optgroup label="IMPOTS">
+                <option value="ANCFCC- CONSULTATION ET COMMANDES">ANCFCC- CONSULTATION ET COMMANDES</option>
+                <option value="ANCFCC - DROIT ET CONSERVATION">ANCFCC - DROIT ET CONSERVATION</option>
+                <option value="ANCFCC- PAIEMENT PUBLIC">ANCFCC- PAIEMENT PUBLIC</option>
+                <option value="CNSS">CNSS</option>
+                <option value="DGI IR IS TVA DE ET FI">DGI IR IS TVA DE ET FI</option>
+                <option value="E-TIMBRE">E-TIMBRE</option>
+                <option value="MINISTÈRE DE LA JUSTICE">MINISTÈRE DE LA JUSTICE</option>
+                <option value="TGR-TAXES DOUANE AMENDES">TGR-TAXES DOUANE AMENDES</option>
+              </optgroup>
+
+              <optgroup label="ADMINISTRATIONS">
+                <option value="ALAKHAWAYN UNIVERSITY">ALAKHAWAYN UNIVERSITY</option>
+                <option value="LYAUTEY">LYAUTEY</option>
+                <option value="LYCEE DESCARTES">LYCEE DESCARTES</option>
+                <option value="LYCEE PAUL VALERY">LYCEE PAUL VALERY</option>
+                <option value="OFPPT">OFPPT</option>
+                <option value="VICTOR HUGO">VICTOR HUGO</option>
+              </optgroup>
+            </select>
           </div>
 
           <Button
