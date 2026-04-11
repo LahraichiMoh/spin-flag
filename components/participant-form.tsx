@@ -212,6 +212,8 @@ export function ParticipantForm({ campaignName, primaryColor, logoUrl, onSubmit 
                 <option value="OFPPT">OFPPT</option>
                 <option value="VICTOR HUGO">VICTOR HUGO</option>
               </optgroup>
+
+              <option value="Autre">Autre</option>
             </select>
           </div>
 
