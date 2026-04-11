@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { countCampaignParticipantsForExport, getCampaignParticipantFilterOptions, getCampaignParticipantsExportChunk, getCampaignParticipantsPage } from "@/app/actions/admin-campaign"
+import { BrandLoader } from "@/components/brand-loader"
 
 interface Gift {
   id: string
@@ -43,9 +44,10 @@ interface ParticipantListProps {
   campaignId?: string
   onlyWinners?: boolean
   isTeamAccess?: boolean
+  logoUrl?: string
 }
 
-export function ParticipantList({ campaignId, onlyWinners, isTeamAccess }: ParticipantListProps) {
+export function ParticipantList({ campaignId, onlyWinners, isTeamAccess, logoUrl }: ParticipantListProps) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [prizeMap, setPrizeMap] = useState<{ [key: string]: Gift }>({})
   const [loading, setLoading] = useState(true)
@@ -314,7 +316,7 @@ export function ParticipantList({ campaignId, onlyWinners, isTeamAccess }: Parti
   const displayedParticipants = participants
 
   if (loading) {
-    return <div className="text-center py-8">Chargement...</div>
+    return <BrandLoader logoUrl={logoUrl} title="Chargement des participants..." />
   }
   
   return (

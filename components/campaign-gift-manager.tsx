@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { BrandLoader } from "@/components/brand-loader"
 import { 
   getCampaignGifts, 
   createCampaignGift, 
@@ -33,9 +34,10 @@ interface CampaignGiftManagerProps {
   campaignId: string
   campaignName?: string
   readOnly?: boolean
+  logoUrl?: string
 }
 
-export function CampaignGiftManager({ campaignId, campaignName, readOnly = false }: CampaignGiftManagerProps) {
+export function CampaignGiftManager({ campaignId, campaignName, readOnly = false, logoUrl }: CampaignGiftManagerProps) {
   const [gifts, setGifts] = useState<Gift[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -216,7 +218,7 @@ export function CampaignGiftManager({ campaignId, campaignName, readOnly = false
     setDeleteGiftId(null)
   }
 
-  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+  if (loading) return <BrandLoader logoUrl={logoUrl} title="Chargement des cadeaux..." />
 
   return (
     <div className="space-y-6">

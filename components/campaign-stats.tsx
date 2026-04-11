@@ -26,12 +26,14 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { BrandLoader } from "@/components/brand-loader"
 
 interface CampaignStatsProps {
   campaignId: string
+  logoUrl?: string
 }
 
-export function CampaignStats({ campaignId }: CampaignStatsProps) {
+export function CampaignStats({ campaignId, logoUrl }: CampaignStatsProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any[]>([])
   
@@ -205,10 +207,8 @@ export function CampaignStats({ campaignId }: CampaignStatsProps) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-        </div>
+      {loading && data.length === 0 ? (
+        <BrandLoader logoUrl={logoUrl} title="Chargement des statistiques..." />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -25,6 +25,7 @@ import { CampaignGiftManager } from "@/components/campaign-gift-manager"
 import { ParticipantList } from "@/components/participant-list"
 import { CampaignStats } from "@/components/campaign-stats"
 import { CampaignTeamManager } from "@/components/campaign-team-manager"
+import { BrandLoader } from "@/components/brand-loader"
 import { createClient } from "@/lib/supabase/client"
 
 interface CampaignManagerProps {
@@ -477,25 +478,30 @@ export function CampaignManager({ teamAccess }: CampaignManagerProps) {
                 campaignId={editingCampaign.id} 
                 campaignName={editingCampaign.name}
                 readOnly={teamAccess && !teamAccess.permissions.can_edit_gifts} 
+                logoUrl={editingCampaign.theme?.logoUrl}
               />
             </TabsContent>
           )}
 
           {!teamAccess && (
             <TabsContent value="venues">
-              <CampaignVenueManager campaignId={editingCampaign.id} />
+              <CampaignVenueManager campaignId={editingCampaign.id} logoUrl={editingCampaign.theme?.logoUrl} />
             </TabsContent>
           )}
 
           {( !teamAccess || teamAccess.permissions.can_view_participants ) && (
             <TabsContent value="participants">
-              <ParticipantList campaignId={editingCampaign.id} isTeamAccess={!!teamAccess} />
+              <ParticipantList
+                campaignId={editingCampaign.id}
+                isTeamAccess={!!teamAccess}
+                logoUrl={editingCampaign.theme?.logoUrl}
+              />
             </TabsContent>
           )}
 
           {( !teamAccess || teamAccess.permissions.can_view_stats ) && (
             <TabsContent value="stats">
-              <CampaignStats campaignId={editingCampaign.id} />
+              <CampaignStats campaignId={editingCampaign.id} logoUrl={editingCampaign.theme?.logoUrl} />
             </TabsContent>
           )}
 
@@ -730,7 +736,7 @@ export function CampaignManager({ teamAccess }: CampaignManagerProps) {
   )
 }
 
-function CampaignVenueManager({ campaignId }: { campaignId: string }) {
+function CampaignVenueManager({ campaignId, logoUrl }: { campaignId: string; logoUrl?: string }) {
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([])
   const [venues, setVenues] = useState<Array<any>>([])
   const [loading, setLoading] = useState(true)
@@ -800,7 +806,7 @@ function CampaignVenueManager({ campaignId }: { campaignId: string }) {
     }
   }
 
-  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+  if (loading) return <BrandLoader logoUrl={logoUrl} title="Chargement des établissements..." />
 
   return (
     <div className="space-y-6">

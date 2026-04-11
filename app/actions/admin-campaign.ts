@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { cookies } from "next/headers"
+import { unstable_cache } from "next/cache"
 
 type TeamAccessCookie = {
   id: string
@@ -50,24 +51,7 @@ async function assertCampaignAccess(campaignId: string, permission: "participant
 
 export async function getCampaignParticipantFilterOptions(campaignId: string) {
   await assertCampaignAccess(campaignId, "participants")
-  const service = createServiceClient()
-
-  const [{ data: gifts }, { data: rows }] = await Promise.all([
-    service.from("gifts").select("id, name, image_url").eq("campaign_id", campaignId).order("name"),
-    service.from("participants").select("city, name").eq("campaign_id", campaignId),
-  ])
-
-  const cities = Array.from(new Set((rows || []).map((r: any) => r.city).filter(Boolean))) as string[]
-  const animators = Array.from(new Set((rows || []).map((r: any) => r.name).filter(Boolean))) as string[]
-
-  return {
-    success: true as const,
-    data: {
-      gifts: (gifts || []) as Array<{ id: string; name: string; image_url?: string }>,
-      cities: cities.sort(),
-      animators: animators.sort(),
-    },
-  }
+  return await getCampaignParticipantFilterOptionsCached(campaignId)
 }
 
 type DateRange = { from?: string; to?: string }
@@ -89,6 +73,31 @@ function applyFilters(query: any, params: { campaignId: string; city?: string; a
   }
   return query
 }
+
+const getCampaignParticipantFilterOptionsCached = unstable_cache(
+  async (campaignId: string) => {
+    const service = createServiceClient()
+
+    const [{ data: gifts }, { data: rows }] = await Promise.all([
+      service.from("gifts").select("id, name, image_url").eq("campaign_id", campaignId).order("name"),
+      service.from("participants").select("city, name").eq("campaign_id", campaignId),
+    ])
+
+    const cities = Array.from(new Set((rows || []).map((r: any) => r.city).filter(Boolean))) as string[]
+    const animators = Array.from(new Set((rows || []).map((r: any) => r.name).filter(Boolean))) as string[]
+
+    return {
+      success: true as const,
+      data: {
+        gifts: (gifts || []) as Array<{ id: string; name: string; image_url?: string }>,
+        cities: cities.sort(),
+        animators: animators.sort(),
+      },
+    }
+  },
+  ["campaign-filter-options"],
+  { revalidate: 30 }
+)
 
 export async function getCampaignParticipantsPage(params: {
   campaignId: string
@@ -192,35 +201,44 @@ export async function getCampaignParticipantsExportChunk(params: {
 
 export async function getCampaignStatsRows(params: { campaignId: string; range?: DateRange }) {
   await assertCampaignAccess(params.campaignId, "stats")
-  const service = createServiceClient()
+  const from = params.range?.from || ""
+  const to = params.range?.to || ""
+  return await getCampaignStatsRowsCached(params.campaignId, from, to)
+}
 
-  let allRows: any[] = []
-  let offset = 0
-  const limit = 1000
-  let hasMore = true
+const getCampaignStatsRowsCached = unstable_cache(
+  async (campaignId: string, from: string, to: string) => {
+    const service = createServiceClient()
+    const range: DateRange | undefined = from || to ? { from: from || undefined, to: to || undefined } : undefined
 
-  while (hasMore) {
-    let query = service
-      .from("participants")
-      .select("created_at, city, participant_details(gender, age_range)")
-      .eq("campaign_id", params.campaignId)
+    let allRows: any[] = []
+    let offset = 0
+    const limit = 1000
+    let hasMore = true
 
-    query = applyDateRange(query, params.range)
-    query = query.range(offset, offset + limit - 1)
+    while (hasMore) {
+      let query = service
+        .from("participants")
+        .select("created_at, city, participant_details(gender, age_range)")
+        .eq("campaign_id", campaignId)
 
-    const { data, error } = await query
-    if (error) return { success: false as const, error: error.message }
+      query = applyDateRange(query, range)
+      query = query.range(offset, offset + limit - 1)
 
-    if (data && data.length > 0) {
-      allRows = [...allRows, ...data]
-      offset += limit
-      if (data.length < limit) {
+      const { data, error } = await query
+      if (error) return { success: false as const, error: error.message }
+
+      if (data && data.length > 0) {
+        allRows = [...allRows, ...data]
+        offset += limit
+        if (data.length < limit) hasMore = false
+      } else {
         hasMore = false
       }
-    } else {
-      hasMore = false
     }
-  }
 
-  return { success: true as const, data: { rows: allRows } }
-}
+    return { success: true as const, data: { rows: allRows } }
+  },
+  ["campaign-stats-rows"],
+  { revalidate: 30 }
+)
